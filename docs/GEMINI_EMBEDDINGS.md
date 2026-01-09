@@ -26,7 +26,7 @@ We use **`gemini-embedding-001`** for generating vector embeddings from motion d
 Gemini embeddings support 5 task types for optimization:
 
 ### 1. `RETRIEVAL_DOCUMENT` (Indexing)
-**When to use:** Storing motion descriptors in Elasticsearch for future search
+**When to use:** Storing motion descriptors in Gemini File Search corpus for future search
 
 ```python
 from src.kinetic_ledger.services.embedding_service import embed_motion_descriptor
@@ -156,22 +156,40 @@ Gemini supports flexible dimensions (128-3072), but recommended sizes are:
 - **1536** - Higher accuracy for complex motion patterns
 - **3072** - Maximum accuracy (no normalization needed)
 
-## Integration with Elasticsearch
+## Integration with Gemini File Search
 
-Our Elasticsearch index is configured for 768-dimensional Gemini embeddings:
+Kinetic Ledger uses Gemini File Search as the primary vector database (replacing Elasticsearch):
 
 ```python
-# elasticsearch_mappings.py
-VECTOR_DIMENSIONS = 768  # Aligned with Gemini
+# file_search_connector.py
+from google import genai
 
-# Index mapping
-"motion_vector": {
-    "type": "dense_vector",
-    "dims": 768,
-    "index": True,
-    "similarity": "cosine"  # Matches normalized embeddings
-}
+connector = FileSearchConnector(
+    api_key=api_key,
+    corpus_name="kinetic-motion-analysis"
+)
+
+# Index motion analysis document
+connector.index_document({
+    "analysis_id": "motion_001",
+    "query_descriptor": "capoeira breakdance athletic blend",
+    "style_labels": ["capoeira", "breakdance"],
+    "gemini_summary": "Dynamic fusion with explosive kicks"
+})
+
+# Natural language search
+results = connector.search(
+    "Find martial arts blends with acrobatic elements",
+    max_results=10
+)
 ```
+
+**Advantages over Elasticsearch:**
+- No infrastructure setup required
+- Automatic embedding and chunking
+- Free storage and query-time embeddings
+- Native integration with Gemini SDK
+- Natural language queries without complex DSL
 
 ## Cost Optimization
 
@@ -211,7 +229,7 @@ This ensures tests and development work without API access.
    - Saves 50% on API costs
 
 3. **Cache embeddings:**
-   - Store embeddings in Elasticsearch
+   - Store embeddings in File Search corpus
    - Don't re-embed the same motion descriptor
 
 4. **Monitor dimensions:**
@@ -222,40 +240,45 @@ This ensures tests and development work without API access.
    - Always use normalized embeddings for cosine similarity
    - Service handles this automatically for dims < 3072
 
-## Future: Gemini File Search
+## Future: Advanced File Search Features
 
-Gemini also offers a **File Search** tool with automatic chunking and indexing:
+Gemini File Search offers advanced capabilities for future enhancements:
+
+### Multi-Modal Corpus
 
 ```python
-# Alternative to manual Elasticsearch (future consideration)
-from google import genai
-
-client = genai.Client(api_key=api_key)
-
-# Upload motion data to corpus
-corpus = client.files.create_corpus(display_name="motion_library")
-
-# Automatic embedding and indexing
+# Store motion videos directly in corpus
 file = client.files.upload(
-    file_path="motion_sequence.fbx",
-    corpus=corpus
+    file_path="motion_sequence.mp4",
+    corpus=corpus,
+    mime_type="video/mp4"
 )
 
-# Search with natural language
+# Search with multimodal understanding
 results = client.models.generate_content(
     model="gemini-2.0-flash-exp",
-    contents="Find martial arts blends with acrobatic elements",
+    contents="Find motion sequences with spinning kicks",
     config=types.GenerateContentConfig(
         tools=[types.Tool(file_search=corpus)]
     )
 )
 ```
 
-This could complement or replace Elasticsearch for certain use cases.
+### Automatic Grounding
+
+File Search automatically provides grounding citations:
+
+```python
+for chunk in response.grounding_metadata.grounding_chunks:
+    print(f"Source: {chunk.file.display_name}")
+    print(f"Score: {chunk.score}")
+    print(f"Content: {chunk.content}")
+```
+
+This ensures search results are traceable to specific source documents.
 
 ## References
 
 - [Gemini Embeddings API Documentation](https://ai.google.dev/gemini-api/docs/embeddings)
 - [Gemini File Search Guide](https://ai.google.dev/gemini-api/docs/file-search)
 - [google-genai Python SDK](https://github.com/googleapis/python-genai)
-- [Elasticsearch k-NN Search](https://www.elastic.co/guide/en/elasticsearch/reference/current/knn-search.html)
