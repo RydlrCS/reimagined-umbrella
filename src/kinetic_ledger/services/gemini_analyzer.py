@@ -1,5 +1,7 @@
 """
 Gemini Multimodal Analyzer - analyzes motion previews with Gemini.
+
+Uses structured outputs for type-safe, validated responses.
 """
 import logging
 import time
@@ -15,6 +17,10 @@ from ..schemas.models import (
     ModelDescriptor,
     GeminiInputs,
     GeminiOutputs,
+)
+from ..schemas.structured_outputs import (
+    MotionStyleClassification,
+    SafetyAssessment,
 )
 from ..utils.logging import setup_logging, set_correlation_id
 from ..utils.errors import GeminiError, ValidationError

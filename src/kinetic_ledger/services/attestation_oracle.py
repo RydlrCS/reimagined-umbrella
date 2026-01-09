@@ -1,5 +1,9 @@
 """
 Attestation Oracle - validates motion novelty and signs mint authorizations.
+
+Uses hybrid architecture:
+- Gemini File Search: Natural language discovery and semantic search
+- kNN + RkCNN: Precise embedding-based similarity for novelty detection
 """
 import hashlib
 import logging
@@ -25,6 +29,7 @@ from ..utils.errors import DecisionError, NoveltyRejectionError, ManualReviewReq
 from ..utils.canonicalize import keccak256_json
 from ..utils.idempotency import nonce_manager
 from .similarity import knn, rkcnn
+from ..connectors.file_search_connector import FileSearchConnector
 
 
 logger = logging.getLogger(__name__)
@@ -76,9 +81,14 @@ class AttestationOracle:
     """
     Attestation Oracle Service.
     
+    Hybrid architecture combining:
+    1. Gemini File Search: Natural language discovery, semantic search, grounding
+    2. kNN: Baseline similarity using cached embeddings
+    3. RkCNN: High-dimensional robustness for novelty detection
+    
     Responsibilities:
     1. Build query vectors from tensor features + Gemini descriptors
-    2. Run kNN for baseline similarity
+    2. Run kNN for baseline similarity (using embedding cache)
     3. Run RkCNN ensembles for high-dimensional robustness
     4. Compute separation score and vote margin
     5. Make novelty decision: MINT, REJECT, or REVIEW
@@ -90,9 +100,11 @@ class AttestationOracle:
         self,
         config: AttestationConfig,
         vector_store: Optional[VectorStore] = None,
+        file_search: Optional[FileSearchConnector] = None,
     ):
         self.config = config
         self.vector_store = vector_store or VectorStore()
+        self.file_search = file_search or FileSearchConnector.get_instance()
         setup_logging("attestation-oracle")
     
     def _create_query_vector(
@@ -185,7 +197,10 @@ class AttestationOracle:
         correlation_id: Optional[str] = None,
     ) -> SimilarityCheck:
         """
-        Validate motion similarity using kNN + RkCNN.
+        Validate motion similarity using kNN + RkCNN with hybrid storage.
+        
+        Uses both File Search (for natural language discovery) and 
+        embedding cache (for precise kNN/RkCNN similarity).
         
         Args:
             analysis_id: Gemini analysis ID
@@ -211,13 +226,19 @@ class AttestationOracle:
         # Create query vector
         query = self._create_query_vector(tensor_hash, gemini_descriptors)
         
-        # Get candidate vectors from store
-        items = self.vector_store.get_all()
-        
-        logger.info(
-            f"Running similarity check against {len(items)} candidates",
-            extra={"embedding_dim": query.shape[0]},
-        )
+        # Get candidate vectors - try File Search cache first, fallback to VectorStore
+        if self.file_search.is_available() and self.file_search.cache_size() > 0:
+            items = self.file_search.get_all_embeddings()
+            logger.info(
+                f"Using File Search embedding cache: {len(items)} vectors",
+                extra={"embedding_dim": query.shape[0]},
+            )
+        else:
+            items = self.vector_store.get_all()
+            logger.info(
+                f"Using VectorStore: {len(items)} vectors",
+                extra={"embedding_dim": query.shape[0]},
+            )
         
         # Run kNN baseline
         knn_neighbors = knn(
@@ -293,6 +314,8 @@ class AttestationOracle:
                 "separation": separation,
                 "vote_margin": vote_margin,
                 "reason_codes": reason_codes,
+                "knn_neighbors": len(knn_neighbors),
+                "rkcnn_ensembles": actual_ensembles,
             },
         )
         

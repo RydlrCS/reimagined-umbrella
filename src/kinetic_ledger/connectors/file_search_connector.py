@@ -8,9 +8,10 @@ Replaces Elasticsearch with Gemini's native File Search API for:
 - Free storage and query-time embeddings
 """
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
 import json
+import numpy as np
 
 try:
     from google import genai
@@ -43,6 +44,7 @@ class FileSearchConnector:
     _client: Optional[Any] = None
     _corpus: Optional[Any] = None
     _available: bool = False
+    _embedding_cache: Dict[str, np.ndarray] = {}
     
     def __init__(
         self,
@@ -156,10 +158,13 @@ class FileSearchConnector:
     def index_document(
         self,
         document: Dict[str, Any],
-        document_id: Optional[str] = None
+        document_id: Optional[str] = None,
+        embedding: Optional[np.ndarray] = None
     ) -> bool:
         """
         Index a single motion analysis document using File Search.
+        
+        Also stores the embedding in local cache for kNN/RkCNN similarity checks.
         
         Args:
             document: Motion analysis document with fields like:
@@ -170,20 +175,27 @@ class FileSearchConnector:
                 - source_motion: Source motion filename
                 - etc.
             document_id: Optional custom document ID
+            embedding: Optional embedding vector for kNN/RkCNN (if available)
         
         Returns:
             True if indexing succeeded, False otherwise
         """
+        # Create document metadata (always)
+        doc_id = document_id or document.get("analysis_id", f"doc_{datetime.utcnow().timestamp()}")
+        
+        # Store embedding in cache (even if File Search is unavailable)
+        if embedding is not None:
+            self._embedding_cache[doc_id] = embedding
+            logger.debug(f"Cached embedding for {doc_id}: {embedding.shape}")
+        
+        # Try to index in File Search if available
         if not self._initialize_client():
-            logger.warning("File Search unavailable - skipping document index")
-            return False
+            logger.warning("File Search unavailable - embedding cached but not indexed")
+            return embedding is not None  # Success if we cached the embedding
         
         try:
             # Convert document to searchable text format
             text_content = self._format_document_for_search(document)
-            
-            # Create document metadata
-            doc_id = document_id or document.get("analysis_id", f"doc_{datetime.utcnow().timestamp()}")
             
             # Upload document to corpus
             file = self._client.files.create(
@@ -414,12 +426,45 @@ class FileSearchConnector:
                 except Exception as e:
                     logger.error(f"Failed to delete file {file.display_name}: {e}")
             
+            # Clear embedding cache
+            self._embedding_cache.clear()
+            
             logger.info(f"Cleared corpus: {deleted} documents deleted")
             return True
             
         except Exception as e:
             logger.error(f"Failed to clear corpus: {e}", exc_info=True)
             return False
+    
+    def get_all_embeddings(self) -> List[Tuple[str, np.ndarray]]:
+        """
+        Get all cached embeddings for kNN/RkCNN similarity checks.
+        
+        Returns:
+            List of (document_id, embedding) tuples
+        """
+        return list(self._embedding_cache.items())
+    
+    def get_embedding(self, document_id: str) -> Optional[np.ndarray]:
+        """
+        Get embedding for a specific document.
+        
+        Args:
+            document_id: Document identifier
+        
+        Returns:
+            Embedding vector if found, None otherwise
+        """
+        return self._embedding_cache.get(document_id)
+    
+    def cache_size(self) -> int:
+        """
+        Get number of cached embeddings.
+        
+        Returns:
+            Number of embeddings in cache
+        """
+        return len(self._embedding_cache)
 
 
 # Global singleton instance
