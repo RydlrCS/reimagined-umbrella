@@ -1,0 +1,17 @@
+[profile.default]
+src = "contracts"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.30"
+
+# Arc Testnet configuration
+[rpc_endpoints]
+arc_testnet = "${ARC_TESTNET_RPC_URL}"
+
+[etherscan]
+arc_testnet = { key = "${ARC_EXPLORER_API_KEY}", url = "https://testnet.arcscan.app/api" }
+
+# Optimizer settings
+[profile.default.optimizer]
+enabled = true
+runs = 200
