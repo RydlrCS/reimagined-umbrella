@@ -5,6 +5,7 @@ Demo script for Kinetic Ledger Phase-2 Trustless Agent Loop.
 This demonstrates the complete workflow from motion upload to USDC settlement.
 """
 import base64
+import os
 from kinetic_ledger.services import (
     TrustlessAgentLoop,
     TrustlessAgentConfig,
@@ -22,9 +23,13 @@ def main():
     
     # 1. Configure agent
     print("1️⃣  Configuring trustless agent...")
+    
+    # Get Gemini API key from environment or use demo key
+    gemini_api_key = os.environ.get("GEMINI_API_KEY", "demo_gemini_key")
+    
     config = TrustlessAgentConfig(
         circle_api_key="demo_circle_key",
-        gemini_api_key="demo_gemini_key",
+        gemini_api_key=gemini_api_key,
         novelty_threshold=0.42,
         chain_id=1,
         verifying_contract="0x1234567890123456789012345678901234567890",
@@ -34,7 +39,12 @@ def main():
     )
     
     agent = TrustlessAgentLoop(config)
-    print("   ✅ Agent configured\n")
+    
+    if gemini_api_key != "demo_gemini_key":
+        print(f"   ✅ Agent configured with real Gemini API")
+    else:
+        print(f"   ⚠️  Agent using fallback mode (set GEMINI_API_KEY env var for real API)")
+    print()
     
     # 2. Create upload request
     print("2️⃣  Creating motion upload request...")
