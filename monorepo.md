@@ -91,7 +91,7 @@ kinetic-ledger/
         logging.py
         schemas.py                  # SearchQuery, SearchResult, HybridSearch
         elasticsearch_connector.py  # typed ES client with retry logic
-        embedding_service.py        # SentenceTransformers (all-MiniLM-L6-v2)
+        embedding_service.py        # Gemini embeddings (gemini-embedding-001)
         search_engine.py            # k-NN, semantic, hybrid search orchestration
         indexing.py                 # bulk index, document upsert
         fallback.py                 # mock search when ES unavailable
@@ -196,7 +196,7 @@ kinetic-ledger/
 **Architecture** (based on MotionBlendAI patterns):
 
 - **Elasticsearch 8.x+** with k-NN plugin for vector similarity
-- **384-dimensional embeddings** using SentenceTransformers (`all-MiniLM-L6-v2`)
+- **768-dimensional embeddings** using Gemini embeddings (`gemini-embedding-001`)
 - **Hybrid search** combining vector similarity + text relevance (RRF ranking)
 - **ELSER semantic model** for natural language queries
 - **Lazy initialization** with connection pooling and fallback to mock data
@@ -206,7 +206,7 @@ kinetic-ledger/
 ```python
 Index: "kinetic-motion-analysis"
 Mappings:
-  - motion_vector: dense_vector (384 dims, cosine similarity)
+  - motion_vector: dense_vector (768 dims, cosine similarity)
   - query_descriptor: text + semantic_text (ELSER)
   - style_labels: keyword (from Gemini analysis)
   - npc_tags: keyword (character tags)

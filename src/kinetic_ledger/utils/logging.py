@@ -68,3 +68,16 @@ def set_correlation_id(correlation_id: str) -> None:
 def get_correlation_id() -> Optional[str]:
     """Get correlation ID from context."""
     return correlation_id_var.get()
+
+
+def get_logger(name: str) -> logging.Logger:
+    """
+    Get a logger instance with the specified name.
+    
+    Args:
+        name: Logger name (typically __name__ of the module)
+    
+    Returns:
+        Configured logger instance
+    """
+    return logging.getLogger(name)

@@ -1,20 +1,19 @@
 """
-Motion embedding service for vector database search.
+Motion embedding service for vector database search using Gemini embeddings.
 
 Generates dense vector embeddings from motion analysis data using:
-- SentenceTransformers (all-MiniLM-L6-v2) for text embeddings
+- Google Gemini gemini-embedding-001 (768-dimensional by default)
+- Supports task types: SEMANTIC_SIMILARITY, RETRIEVAL_DOCUMENT, RETRIEVAL_QUERY
+- Batch embedding support for efficiency
 - Deterministic fallback for offline/development mode
-- Query descriptor generation from Gemini analysis results
 
-Based on MotionBlendAI patterns from:
-- project/search_api/search_service.py (embed_text function)
-- scripts/seed_motions.py (text_from_file, embed_text)
+Based on Gemini Embeddings API:
+https://ai.google.dev/gemini-api/docs/embeddings
 """
 import hashlib
 import logging
 import os
-import struct
-from typing import Any, List, Optional
+from typing import Any, List, Literal, Optional
 
 import numpy as np
 
@@ -22,54 +21,70 @@ from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Lazy import for optional dependencies
+# Lazy import for Gemini
 try:
-    from sentence_transformers import SentenceTransformer
-    TRANSFORMERS_AVAILABLE = True
+    from google import genai
+    from google.genai import types
+    GEMINI_AVAILABLE = True
 except ImportError:
-    TRANSFORMERS_AVAILABLE = False
-    logger.warning(
-        "sentence-transformers not installed. Install with: "
-        "pip install sentence-transformers"
-    )
+    GEMINI_AVAILABLE = False
+    logger.warning("google-genai not installed. Using fallback embeddings.")
 
-# Model configuration (384-dimensional embeddings)
-EMBED_MODEL_NAME = "all-MiniLM-L6-v2"
-VECTOR_DIMENSIONS = 384
+# Gemini embedding configuration
+EMBED_MODEL_NAME = "gemini-embedding-001"
+# Recommended dimensions: 768 (default), 1536, or 3072
+# Using 768 for balance between quality and storage
+VECTOR_DIMENSIONS = 768
+
+# Task types for optimized embeddings
+TaskType = Literal[
+    "SEMANTIC_SIMILARITY",  # For similarity comparison
+    "RETRIEVAL_DOCUMENT",   # For documents to be searched
+    "RETRIEVAL_QUERY",      # For search queries
+    "CLASSIFICATION",       # For text classification
+    "CLUSTERING",           # For grouping similar texts
+]
 
 
 class EmbeddingService:
     """
-    Production embedding service with model caching and fallback support.
+    Production embedding service using Gemini embeddings API.
     
     Features:
-    - Lazy model loading (loads only when needed)
-    - Singleton pattern for model reuse
-    - Deterministic fallback when model unavailable
-    - Comprehensive error handling and logging
+    - Gemini gemini-embedding-001 model (768-dim default)
+    - Task-specific optimization (SEMANTIC_SIMILARITY, RETRIEVAL_DOCUMENT, etc.)
+    - Batch embedding support for efficiency
+    - Singleton pattern for client reuse
+    - Deterministic fallback when Gemini unavailable
+    - Automatic embedding normalization for accuracy
     """
     
     _instance: Optional['EmbeddingService'] = None
-    _model: Optional[Any] = None
+    _client: Optional[Any] = None
     _available: bool = False
     
     def __init__(
         self,
+        api_key: Optional[str] = None,
         model_name: str = EMBED_MODEL_NAME,
-        device: Optional[str] = None,
+        output_dimensionality: int = VECTOR_DIMENSIONS,
     ):
         """
-        Initialize embedding service (lazy - doesn't load model immediately).
+        Initialize embedding service (lazy - doesn't connect immediately).
         
         Args:
-            model_name: SentenceTransformer model name
-            device: Device for inference ('cpu', 'cuda', or None for auto-detect)
+            api_key: Gemini API key (uses GEMINI_API_KEY env var if not provided)
+            model_name: Gemini embedding model name
+            output_dimensionality: Output dimension size (768, 1536, or 3072 recommended)
         """
+        self.api_key = api_key or os.getenv("GEMINI_API_KEY", "")
         self.model_name = model_name
-        self.device = device
-        self.dimensions = VECTOR_DIMENSIONS
+        self.dimensions = output_dimensionality
         
-        logger.info(f"EmbeddingService initialized (lazy) - model={model_name}")
+        logger.info(
+            f"EmbeddingService initialized (lazy) - "
+            f"model={model_name}, dims={output_dimensionality}"
+        )
     
     @classmethod
     def get_instance(cls, **kwargs) -> 'EmbeddingService':
@@ -78,56 +93,66 @@ class EmbeddingService:
             cls._instance = cls(**kwargs)
         return cls._instance
     
-    def _initialize_model(self) -> bool:
+    def _initialize_client(self) -> bool:
         """
-        Lazy model initialization with caching.
+        Lazy client initialization.
         
         Returns:
-            True if model loaded successfully, False otherwise
+            True if client initialized successfully, False otherwise
         """
-        if self._model is not None:
+        if self._client is not None:
             return self._available
         
-        if not TRANSFORMERS_AVAILABLE:
-            logger.warning("sentence-transformers not available - using fallback embeddings")
+        if not GEMINI_AVAILABLE:
+            logger.warning("google-genai not available - using fallback embeddings")
+            self._available = False
+            return False
+        
+        if not self.api_key:
+            logger.warning(
+                "GEMINI_API_KEY not configured - using fallback embeddings. "
+                "Set environment variable to enable Gemini embeddings."
+            )
             self._available = False
             return False
         
         try:
-            logger.info(f"Loading SentenceTransformer model: {self.model_name}")
+            logger.info(f"Initializing Gemini client for embeddings")
             
-            self._model = SentenceTransformer(
-                self.model_name,
-                device=self.device
-            )
+            self._client = genai.Client(api_key=self.api_key)
             
             self._available = True
-            logger.info(f"✅ Loaded model: {self.model_name} ({self.dimensions} dimensions)")
+            logger.info(
+                f"✅ Gemini embedding client initialized: "
+                f"{self.model_name} ({self.dimensions} dimensions)"
+            )
             return True
             
         except Exception as e:
-            logger.error(f"Failed to load SentenceTransformer model: {e}", exc_info=True)
+            logger.error(f"Failed to initialize Gemini client: {e}", exc_info=True)
             self._available = False
             return False
     
     def is_available(self) -> bool:
-        """Check if embedding model is available."""
-        if self._model is None:
-            self._initialize_model()
+        """Check if Gemini embedding service is available."""
+        if self._client is None:
+            self._initialize_client()
         return self._available
     
-    def embed_text(self, text: Optional[str]) -> List[float]:
+    def embed_text(
+        self,
+        text: Optional[str],
+        task_type: TaskType = "RETRIEVAL_DOCUMENT",
+    ) -> List[float]:
         """
-        Generate embedding vector from text.
-        
-        Uses SentenceTransformer if available, otherwise falls back to
-        deterministic pseudo-embedding based on text hash.
+        Generate embedding vector from text using Gemini.
         
         Args:
             text: Input text (query descriptor, motion name, etc.)
+            task_type: Optimization task type (see TaskType for options)
         
         Returns:
-            List of floats (384 dimensions) representing the embedding
+            List of floats representing the embedding (768 dimensions by default)
         """
         # Handle empty text
         if not text or not text.strip():
@@ -135,33 +160,73 @@ class EmbeddingService:
             rng = np.random.RandomState(0)
             return (rng.rand(self.dimensions) * 0.001).tolist()
         
-        # Try model-based embedding
-        if self._initialize_model() and self._model is not None:
+        # Try Gemini-based embedding
+        if self._initialize_client() and self._client is not None:
             try:
-                vec = self._model.encode(text)
-                embedding = vec.tolist() if isinstance(vec, np.ndarray) else list(vec)
-                logger.debug(f"Generated embedding for text: '{text[:50]}...' ({len(embedding)} dims)")
+                result = self._client.models.embed_content(
+                    model=self.model_name,
+                    contents=text,
+                    config=types.EmbedContentConfig(
+                        task_type=task_type,
+                        output_dimensionality=self.dimensions
+                    )
+                )
+                
+                [embedding_obj] = result.embeddings
+                embedding = embedding_obj.values
+                
+                # Normalize for dimensions < 3072 (per Gemini docs)
+                if self.dimensions < 3072:
+                    embedding = self._normalize_embedding(embedding)
+                
+                logger.debug(
+                    f"Generated Gemini embedding: '{text[:50]}...' "
+                    f"({len(embedding)} dims, task={task_type})"
+                )
                 return embedding
                 
             except Exception as e:
-                logger.error(f"Model encoding failed: {e}, falling back to pseudo-embedding")
+                logger.error(
+                    f"Gemini embedding failed: {e}, falling back to pseudo-embedding"
+                )
                 # Fall through to fallback
         
         # Fallback: deterministic pseudo-embedding
         return self._pseudo_embedding(text)
     
+    def _normalize_embedding(self, embedding: List[float]) -> List[float]:
+        """
+        Normalize embedding to unit length.
+        
+        Per Gemini docs: embeddings with output_dimensionality < 3072 need normalization
+        for accurate semantic similarity (cosine distance).
+        
+        Args:
+            embedding: Raw embedding vector
+        
+        Returns:
+            Normalized embedding vector
+        """
+        embedding_np = np.array(embedding, dtype=np.float32)
+        norm = np.linalg.norm(embedding_np)
+        
+        if norm > 0:
+            embedding_np = embedding_np / norm
+        
+        return embedding_np.tolist()
+    
     def _pseudo_embedding(self, text: str) -> List[float]:
         """
         Generate deterministic pseudo-embedding from text hash.
         
-        Used as fallback when SentenceTransformer is unavailable.
+        Used as fallback when Gemini is unavailable.
         Ensures consistent embeddings for same text across runs.
         
         Args:
             text: Input text
         
         Returns:
-            List of floats (384 dimensions) pseudo-embedding
+            List of floats (768 dimensions) pseudo-embedding
         """
         # Generate deterministic seed from text hash
         text_hash = abs(hash(text)) % (2**32)
@@ -185,6 +250,7 @@ class EmbeddingService:
         summary: Optional[str] = None,
         source_motion: Optional[str] = None,
         target_motion: Optional[str] = None,
+        task_type: TaskType = "RETRIEVAL_DOCUMENT",
     ) -> List[float]:
         """
         Generate embedding from Gemini motion analysis results.
@@ -198,9 +264,10 @@ class EmbeddingService:
             summary: Gemini-generated motion summary
             source_motion: Source motion name
             target_motion: Target motion name
+            task_type: Task optimization (RETRIEVAL_DOCUMENT for indexing, RETRIEVAL_QUERY for search)
         
         Returns:
-            Embedding vector (384 dimensions)
+            Embedding vector (768 dimensions by default)
         """
         # Build query descriptor from components
         descriptor_parts = []
@@ -226,40 +293,77 @@ class EmbeddingService:
         logger.info(
             f"Building motion embedding from descriptor: "
             f"'{query_descriptor[:100]}...' "
-            f"(labels={len(style_labels or [])}, tags={len(npc_tags or [])})"
+            f"(labels={len(style_labels or [])}, tags={len(npc_tags or [])}, task={task_type})"
         )
         
-        return self.embed_text(query_descriptor)
+        return self.embed_text(query_descriptor, task_type=task_type)
     
-    def batch_embed_text(self, texts: List[str]) -> List[List[float]]:
+    def batch_embed_text(
+        self,
+        texts: List[str],
+        task_type: TaskType = "RETRIEVAL_DOCUMENT",
+    ) -> List[List[float]]:
         """
-        Generate embeddings for multiple texts efficiently.
+        Batch embedding for multiple texts using Gemini batch API.
+        
+        More efficient than individual calls (50% cheaper, higher throughput).
         
         Args:
-            texts: List of input texts
+            texts: List of text strings to embed
+            task_type: Task optimization for all texts
         
         Returns:
-            List of embedding vectors
+            List of embedding vectors (768 dimensions each by default)
         """
         if not texts:
             return []
         
-        # Try model-based batch encoding
-        if self._initialize_model() and self._model is not None:
+        # Filter empty strings (replace with space to avoid errors)
+        valid_texts = [t if t and t.strip() else " " for t in texts]
+        
+        if self._initialize_client() and self._client is not None:
             try:
-                vectors = self._model.encode(texts, show_progress_bar=False)
-                embeddings = [
-                    vec.tolist() if isinstance(vec, np.ndarray) else list(vec)
-                    for vec in vectors
-                ]
-                logger.info(f"Generated {len(embeddings)} embeddings in batch")
+                # Use Gemini batch embedding API
+                results = self._client.models.batch_embed_contents(
+                    model=self.model_name,
+                    requests=[
+                        types.EmbedContentRequest(
+                            content=text,
+                            config=types.EmbedContentConfig(
+                                task_type=task_type,
+                                output_dimensionality=self.dimensions
+                            )
+                        )
+                        for text in valid_texts
+                    ]
+                )
+                
+                # Extract and normalize embeddings
+                embeddings = []
+                for result in results.embeddings:
+                    embedding = result.values
+                    
+                    # Normalize if needed
+                    if self.dimensions < 3072:
+                        embedding = self._normalize_embedding(embedding)
+                    
+                    embeddings.append(embedding)
+                
+                logger.info(
+                    f"Batch generated {len(texts)} Gemini embeddings "
+                    f"({self.dimensions} dims, task={task_type})"
+                )
                 return embeddings
                 
             except Exception as e:
-                logger.error(f"Batch encoding failed: {e}, falling back to individual processing")
+                logger.error(
+                    f"Gemini batch embedding failed: {e}, "
+                    f"falling back to individual embeddings"
+                )
+                # Fall through to fallback
         
-        # Fallback: process individually
-        return [self.embed_text(text) for text in texts]
+        # Fallback: embed individually
+        return [self.embed_text(text, task_type=task_type) for text in texts]
 
 
 # Global singleton instance

@@ -3,6 +3,8 @@ Elasticsearch index mappings for Kinetic Ledger motion analysis data.
 
 Follows MotionBlendAI patterns with dense_vector fields for similarity search,
 semantic text fields for natural language queries, and metadata for filtering.
+
+Optimized for Gemini embeddings (gemini-embedding-001, 768 dimensions).
 """
 from typing import Any, Dict
 
@@ -10,8 +12,8 @@ from typing import Any, Dict
 # Index name for motion analysis documents
 MOTION_INDEX_NAME = "kinetic-motion-analysis"
 
-# Vector dimensions - using 384 for sentence-transformers all-MiniLM-L6-v2
-VECTOR_DIMENSIONS = 384
+# Vector dimensions - aligned with Gemini embeddings (768-dim recommended)
+VECTOR_DIMENSIONS = 768
 
 
 def create_motion_mappings() -> Dict[str, Any]:
