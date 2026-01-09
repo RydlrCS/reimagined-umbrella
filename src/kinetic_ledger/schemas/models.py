@@ -1,5 +1,5 @@
 from typing import List, Optional, Literal, Dict
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 class SourceRef(BaseModel):
     type: Literal["upload", "uri", "library"]
@@ -181,13 +181,12 @@ class PayoutSplit(BaseModel):
             raise ValueError("payout percentages must be in [0,1]")
         return v
 
-    @field_validator("ops")
-    @classmethod
-    def _sum_to_one(cls, v: float, values):
-        total = v + sum(values.get(k, 0.0) for k in ["creator", "oracle", "platform"])
+    @model_validator(mode="after")
+    def _sum_to_one(self):
+        total = self.creator + self.oracle + self.platform + self.ops
         if abs(total - 1.0) > 1e-6:
-            raise ValueError("payout percentages must sum to 1.0")
-        return v
+            raise ValueError(f"payout percentages must sum to 1.0, got {total}")
+        return self
 
 class EthicsModifiers(BaseModel):
     multipliers: Dict[str, float] = {}
