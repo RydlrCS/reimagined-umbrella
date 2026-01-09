@@ -21,6 +21,8 @@ dependencies = [
     "eth-account>=0.10.0",
     "qdrant-client>=1.7.0",
     "web3>=6.0.0",
+    "elasticsearch>=8.11.0",
+    "sentence-transformers>=2.2.0",
 ]
 
 [project.optional-dependencies]

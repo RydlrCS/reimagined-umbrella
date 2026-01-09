@@ -82,6 +82,24 @@ kinetic-ledger/
         test_rkcnn.py
         test_thresholds.py
 
+    vector-database/                # Elasticsearch vector search for motion analysis
+      pyproject.toml
+      src/vector_db/
+        __init__.py
+        main.py                     # FastAPI (search endpoints)
+        config.py
+        logging.py
+        schemas.py                  # SearchQuery, SearchResult, HybridSearch
+        elasticsearch_connector.py  # typed ES client with retry logic
+        embedding_service.py        # SentenceTransformers (all-MiniLM-L6-v2)
+        search_engine.py            # k-NN, semantic, hybrid search orchestration
+        indexing.py                 # bulk index, document upsert
+        fallback.py                 # mock search when ES unavailable
+      tests/
+        test_elasticsearch_connector.py
+        test_embedding_service.py
+        test_search_integration.py
+
     commerce-orchestrator/          # Circle wallets/gateway + Arc settlement coordinator
       pyproject.toml
       src/commerce/
@@ -115,6 +133,7 @@ kinetic-ledger/
         security.py                 # HMAC verify, request signing helpers
         time.py                     # UTC helpers
         observability.py            # optional OpenTelemetry wiring
+        vector_utils.py             # embedding normalization, cosine similarity
 
   infra/
     docker/
@@ -170,7 +189,82 @@ kinetic-ledger/
    - auto-mint when novelty high and policy passes
    - auto-pay creators upon mint confirmation
 8. Everything emits **correlated logs** + idempotent keys for replay safety.
+### Vector Database Integration (Elasticsearch)
 
+**Purpose**: Semantic search and similarity matching for motion analysis data using Elasticsearch Cloud with dense_vector support.
+
+**Architecture** (based on MotionBlendAI patterns):
+
+- **Elasticsearch 8.x+** with k-NN plugin for vector similarity
+- **384-dimensional embeddings** using SentenceTransformers (`all-MiniLM-L6-v2`)
+- **Hybrid search** combining vector similarity + text relevance (RRF ranking)
+- **ELSER semantic model** for natural language queries
+- **Lazy initialization** with connection pooling and fallback to mock data
+
+**Index Structure**:
+
+```python
+Index: "kinetic-motion-analysis"
+Mappings:
+  - motion_vector: dense_vector (384 dims, cosine similarity)
+  - query_descriptor: text + semantic_text (ELSER)
+  - style_labels: keyword (from Gemini analysis)
+  - npc_tags: keyword (character tags)
+  - gemini_summary: text + semantic_text
+  - source_motion/target_motion: text + keyword + semantic
+  - attestation metadata: validation_score, novelty_score, knn_distance
+  - blend metadata: blend_ratio, transition_start/end, blend_method
+  - timestamps: created_at, updated_at (date)
+```
+
+**Search Modes**:
+
+1. **Vector Similarity (k-NN)**: Generate embedding → cosine similarity search → top-k matches
+2. **Semantic Text Search**: Multi-field search with ELSER + fuzzy matching + highlights
+3. **Hybrid Search**: Weighted vector + text with RRF ranking
+
+**Implementation**:
+
+```python
+# Lazy connector initialization
+connector = ElasticsearchConnector.get_instance(
+    cloud_url=os.getenv("ES_CLOUD_URL"),
+    api_key=os.getenv("ES_API_KEY"),
+    index_name="kinetic-motion-analysis"
+)
+
+# Generate embedding from Gemini analysis
+motion_vector = embed_motion_descriptor(
+    style_labels=["capoeira", "breakdance"],
+    npc_tags=["warrior", "athletic"],
+    summary="Dynamic blend with explosive energy"
+)
+
+# Index with embedding
+connector.index_document({
+    "analysis_id": "motion_123",
+    "motion_vector": motion_vector,
+    "style_labels": ["capoeira", "breakdance"],
+    "validation_score": 0.92
+})
+
+# Hybrid search (60% vector, 40% text)
+results = connector.search_hybrid(
+    query_vector=motion_vector,
+    query_text="explosive athletic martial arts",
+    k=10,
+    vector_weight=0.6
+)
+```
+
+**Configuration**:
+
+```bash
+ES_CLOUD_URL=https://my-deployment.es.us-central1.gcp.elastic.cloud:443
+ES_API_KEY=<base64_encoded_api_key>
+ES_INDEX_NAME=kinetic-motion-analysis  # Optional
+ES_TIMEOUT=30  # Optional, seconds
+```
 ---
 
 ## 3) Code standards (Python “production by default”)
