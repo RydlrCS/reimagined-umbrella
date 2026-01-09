@@ -82,6 +82,28 @@ kinetic-ledger/
         test_rkcnn.py
         test_thresholds.py
 
+    vector-database/                # Hybrid: Gemini File Search + kNN/RkCNN
+      pyproject.toml
+      src/vector_db/
+        __init__.py
+        main.py                     # FastAPI (search endpoints)
+        config.py
+        logging.py
+        schemas.py                  # SearchQuery, SearchResult
+        file_search_connector.py    # Gemini File Search with embedding cache
+        embedding_service.py        # Gemini embeddings (gemini-embedding-001)
+        search_engine.py            # hybrid: File Search + kNN/RkCNN
+        indexing.py                 # document upsert + embedding cache
+        similarity/                 # kNN/RkCNN algorithms
+          __init__.py
+          knn.py                    # k-Nearest Neighbors
+          rkcnn.py                  # Random k-Conditional NN ensembles
+      tests/
+        test_file_search_connector.py
+        test_embedding_service.py
+        test_hybrid_similarity.py
+        test_search_integration.py
+
     commerce-orchestrator/          # Circle wallets/gateway + Arc settlement coordinator
       pyproject.toml
       src/commerce/
@@ -115,6 +137,7 @@ kinetic-ledger/
         security.py                 # HMAC verify, request signing helpers
         time.py                     # UTC helpers
         observability.py            # optional OpenTelemetry wiring
+        vector_utils.py             # embedding normalization, cosine similarity
 
   infra/
     docker/
@@ -170,7 +193,162 @@ kinetic-ledger/
    - auto-mint when novelty high and policy passes
    - auto-pay creators upon mint confirmation
 8. Everything emits **correlated logs** + idempotent keys for replay safety.
+### Vector Search Integration (Gemini File Search)
 
+**Purpose**: Semantic search and similarity matching for motion analysis data using Gemini's native File Search API.
+
+**Architecture** (Hybrid: File Search + kNN/RkCNN):
+
+- **Gemini File Search** for semantic discovery and natural language queries
+- **Embedding Cache** for precise kNN/RkCNN novelty detection
+- **768-dimensional embeddings** using `gemini-embedding-001`
+- **Structured outputs** for type-safe Gemini responses
+- **Lazy initialization** with graceful fallback to VectorStore
+
+**Hybrid Components**:
+
+```python
+1. File Search (Discovery)
+   - Natural language queries: "Find aggressive parkour transitions"
+   - Automatic chunking and indexing
+   - Free storage and query-time embeddings
+   - Grounding metadata for citations
+
+2. Embedding Cache (Novelty Detection)
+   - 768-dim vectors cached during indexing
+   - kNN baseline: 15 nearest neighbors, L2/cosine distance
+   - RkCNN ensembles: 32 subspaces, separation score [0,1]
+   - Vote margin: ensemble consensus measure
+
+3. Structured Outputs (Type Safety)
+   - Pydantic schemas for Gemini responses
+   - NoveltyAssessment, SimilarityFeedback, SafetyAssessment
+   - JSON Schema validation with response_json_schema
+```
+
+**Document Structure**:
+
+```python
+Corpus: "kinetic-motion-analysis"
+Documents contain:
+  - analysis_id: Unique analysis identifier
+  - motion_id: Motion capture file ID
+  - query_descriptor: Searchable text description
+  - style_labels: Motion style tags from Gemini
+  - npc_tags: Character tags (warrior, athletic, etc.)
+  - gemini_summary: AI-generated motion analysis
+  - source_motion/target_motion: File names
+  - attestation metadata: validation_score, novelty_score
+  - blend metadata: blend_ratio, transition_start/end, blend_method
+  - timestamps: created_at, updated_at
+  
+Embedding Cache (parallel):
+  - document_id -> 768-dim numpy array (float32)
+  - Used by kNN/RkCNN for precise similarity
+  - Synchronized with File Search corpus
+```
+
+**Search Capabilities**:
+
+1. **Semantic Discovery (File Search)**:
+   ```python
+   results = file_search.search(
+       "Find athletic martial arts blends for warrior NPCs",
+       max_results=10
+   )
+   ```
+
+2. **Novelty Validation (kNN + RkCNN)**:
+   ```python
+   similarity_check = oracle.validate_similarity(
+       analysis_id="motion-123",
+       tensor_hash="0xabc...",
+       gemini_descriptors={"style": "capoeira"}
+   )
+   # Returns:
+   # - kNN neighbors with distances
+   # - RkCNN separation score (0.65 > 0.42 = MINT)
+   # - Ensemble vote margin (0.82 = strong consensus)
+   # - Decision: MINT/REJECT/REVIEW
+   ```
+
+3. **Structured Analysis**:
+   ```python
+   from schemas.structured_outputs import NoveltyAssessment
+   
+   response = client.models.generate_content(
+       model="gemini-2.5-flash",
+       contents=prompt,
+       config={
+           "response_mime_type": "application/json",
+           "response_json_schema": NoveltyAssessment.model_json_schema(),
+       },
+   )
+   assessment = NoveltyAssessment.model_validate_json(response.text)
+   ```
+
+**Implementation**:
+
+```python
+# Initialize File Search with embedding cache
+connector = FileSearchConnector.get_instance(
+    api_key=os.getenv("GEMINI_API_KEY"),
+    corpus_name="kinetic-motion-analysis"
+)
+
+# Index document + cache embedding
+connector.index_document(
+    document={
+        "analysis_id": "motion_123",
+        "query_descriptor": "capoeira breakdance athletic blend",
+        "style_labels": ["capoeira", "breakdance"],
+    },
+    embedding=motion_embedding  # 768-dim numpy array
+)
+
+# AttestationOracle uses hybrid approach
+oracle = AttestationOracle(
+    config=config,
+    file_search=connector  # Auto-uses embedding cache
+)
+
+similarity = oracle.validate_similarity(
+    analysis_id="new-motion-001",
+    tensor_hash="0x...",
+)
+# Automatically:
+# 1. Checks File Search cache for embeddings
+# 2. Falls back to VectorStore if unavailable
+# 3. Runs kNN (k=15)
+# 4. Runs RkCNN (32 ensembles, 128-dim subspaces)
+# 5. Decides: MINT if separation >= 0.42
+```
+
+**Configuration**:
+
+```bash
+# Gemini File Search (required)
+GEMINI_API_KEY=AIza...
+FILE_SEARCH_CORPUS_NAME=kinetic-motion-analysis  # Optional
+
+# kNN/RkCNN Parameters
+KNN_K=15                        # Number of nearest neighbors
+RKCNN_K=15                      # Neighbors per ensemble
+RKCNN_ENSEMBLES=32              # Number of subspace samples
+RKCNN_SUBSPACE_DIM=128          # Subspace dimensions
+NOVELTY_THRESHOLD=0.42          # Separation score for MINT
+VOTE_MARGIN_THRESHOLD=0.10      # Minimum ensemble consensus
+DISTANCE_METRIC=euclidean       # or cosine
+
+# Embedding Configuration
+EMBEDDING_DIM=768               # gemini-embedding-001 dimensions
+EMBEDDING_MODEL=gemini-embedding-001
+```
+
+**See Also**:
+- [Hybrid Similarity Architecture](docs/HYBRID_SIMILARITY.md) - Complete hybrid design
+- [Gemini Embeddings Guide](docs/GEMINI_EMBEDDINGS.md) - Embedding configuration
+- [Structured Outputs](https://ai.google.dev/gemini-api/docs/structured-output) - Official docs
 ---
 
 ## 3) Code standards (Python “production by default”)
