@@ -2,6 +2,9 @@
 """
 Integration test for Gemini API with real API key.
 Tests the GeminiClient and GeminiAnalyzerService with live API calls.
+
+SECURITY NOTE: These tests require GEMINI_API_KEY environment variable.
+Tests are skipped if API key is not set to prevent exposing credentials.
 """
 import os
 import pytest
@@ -12,10 +15,13 @@ from kinetic_ledger.services.gemini_analyzer import (
 )
 
 
-# Test API key (from environment or hardcoded for demo)
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyCHVrm2t4bHlgIta5GHm8CftC9zZYQwIJM")
+# SECURITY: Only load API key from environment, never hardcode
+# Tests will be skipped if not set
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+HAS_API_KEY = bool(GEMINI_API_KEY)
 
 
+@pytest.mark.skipif(not HAS_API_KEY, reason="GEMINI_API_KEY not set - skipping integration tests")
 class TestGeminiIntegration:
     """Test suite for Gemini API integration."""
     
@@ -26,7 +32,9 @@ class TestGeminiIntegration:
             model="gemini-2.0-flash-exp"
         )
         
-        assert client.api_key == GEMINI_API_KEY
+        # SECURITY: Never assert or print the actual API key value
+        assert client.api_key is not None  # Changed from == to verify existence only
+        assert len(client.api_key) > 0
         assert client.model == "gemini-2.0-flash-exp"
         assert client.provider == "google"
         assert client._client is not None
