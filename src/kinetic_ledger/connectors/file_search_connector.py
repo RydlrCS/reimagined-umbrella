@@ -119,34 +119,35 @@ class FileSearchConnector:
     
     def _get_or_create_corpus(self) -> Any:
         """
-        Get existing corpus or create new one.
+        Get existing file search store or create new one.
         
         Returns:
-            Corpus object
+            FileSearchStore object
         """
         if not self._client:
             return None
         
         try:
-            # List existing corpora
-            corpora = list(self._client.files.list_corpora())
+            # List existing file search stores
+            stores = list(self._client.file_search_stores.list())
             
-            # Find matching corpus by name
-            for corpus in corpora:
-                if corpus.display_name == self.corpus_name:
-                    logger.info(f"Using existing corpus: {self.corpus_name}")
-                    return corpus
+            # Find matching store by display_name (if we can match by name pattern)
+            # File search stores have auto-generated names, so we'll just use the first one
+            # or create a new one if none exist
+            if stores:
+                store = stores[0]
+                logger.info(f"Using existing file search store: {store.name}")
+                return store
             
-            # Create new corpus if not found
-            logger.info(f"Creating new corpus: {self.corpus_name}")
-            corpus = self._client.files.create_corpus(
-                display_name=self.corpus_name
-            )
+            # Create new file search store if not found
+            logger.info(f"Creating new file search store for: {self.corpus_name}")
+            store = self._client.file_search_stores.create()
+            logger.info(f"Created file search store: {store.name}")
             
-            return corpus
+            return store
             
         except Exception as e:
-            logger.error(f"Error managing corpus: {e}", exc_info=True)
+            logger.error(f"Error managing file search store: {e}", exc_info=True)
             return None
     
     def is_available(self) -> bool:
@@ -197,18 +198,37 @@ class FileSearchConnector:
             # Convert document to searchable text format
             text_content = self._format_document_for_search(document)
             
-            # Upload document to corpus
-            file = self._client.files.create(
-                corpus=self._corpus,
-                display_name=doc_id,
-                mime_type="text/plain"
-            )
+            # Upload document to file search store
+            # Create a temporary file with content
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as tmp:
+                tmp.write(text_content)
+                tmp_path = tmp.name
             
-            # Write content
-            file.write(text_content)
-            
-            logger.info(f"Indexed document: {doc_id} ({len(text_content)} chars)")
-            return True
+            try:
+                # Upload to file search store using files.upload
+                uploaded_file = self._client.files.upload(
+                    path=tmp_path,
+                    config={
+                        'display_name': doc_id,
+                        'mime_type': 'text/plain'
+                    }
+                )
+                
+                # Add file to file search store
+                if self._corpus:
+                    self._client.file_search_stores.import_file(
+                        file_search_store=self._corpus.name,
+                        file=uploaded_file.name
+                    )
+                
+                logger.info(f"Indexed document: {doc_id} ({len(text_content)} chars)")
+                return True
+            finally:
+                # Clean up temp file
+                import os
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
             
         except Exception as e:
             logger.error(f"Failed to index document: {e}", exc_info=True)
