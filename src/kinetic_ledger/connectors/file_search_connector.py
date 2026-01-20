@@ -208,7 +208,7 @@ class FileSearchConnector:
             try:
                 # Upload to file search store using files.upload
                 uploaded_file = self._client.files.upload(
-                    path=tmp_path,
+                    file=tmp_path,
                     config={
                         'display_name': doc_id,
                         'mime_type': 'text/plain'

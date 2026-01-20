@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kinetic Ledger - Motion Blend Visualizer</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Core Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+    <!-- Workflow Visualization Libraries -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+    <!-- Temporal Conditioning Module (BlendAnim Paper Enhancement) -->
+    <script src="temporal-conditioning.js"></script>
+    <!-- Feature Flags Configuration -->
+    <script>
+        window.FEATURE_FLAGS = {
+            // Video generation features
+            ENABLE_VEO_GENERATION: true,
+            ENABLE_NANO_BANANA: true,
+            ENABLE_FBX_LOADER: true,
+            
+            // UI features
+            SHOW_TIMELINE_ONLY: new URLSearchParams(window.location.search).has('timeline_mode'),
+            SHOW_WALLET: !new URLSearchParams(window.location.search).has('timeline_mode'),
+            SHOW_METRICS_DASHBOARD: true,
+            ENABLE_VIDEO_MODAL: true,
+            
+            // Auto-load demo
+            AUTO_LOAD_DEMO: new URLSearchParams(window.location.search).get('auto_load') !== 'false',
+            
+            // Debug
+            DEBUG_MODE: new URLSearchParams(window.location.search).has('debug')
+        };
+        
+        if (window.FEATURE_FLAGS.DEBUG_MODE) {
+            console.log('[FeatureFlags] Configuration:', window.FEATURE_FLAGS);
+        }
+    </script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo-section">
+                <h1>🌀 Kinetic Ledger</h1>
+                <span class="tagline">Motion Blend Visualizer</span>
+            </div>
+            
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <span class="stat-label">Motions</span>
+                    <span class="stat-value" id="motionCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">NPCs</span>
+                    <span class="stat-value" id="npcCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Blends</span>
+                    <span class="stat-value" id="blendCount">0</span>
+                </div>
+            </div>
+
+            <!-- Wallet Section -->
+            <div class="wallet-section">
+                <button id="connectWalletBtn" class="btn-wallet">Connect Wallet</button>
+                <div id="walletConnected" class="wallet-connected" style="display: none;">
+                    <div class="wallet-info">
+                        <span class="wallet-address" id="walletAddress">0x0000...0000</span>
+                        <span class="wallet-balance" id="walletBalance">0.00 USDC</span>
+                    </div>
+                    <button id="disconnectWalletBtn" class="btn-disconnect">×</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content timeline-primary">
+            <!-- Collapsible Menu Bar -->
+            <nav class="menu-bar">
+                <button class="menu-toggle" data-panel="prompt">
+                    <span class="menu-icon">✨</span>
+                    <span class="menu-label">Prompt Generation</span>
+                    <span class="menu-arrow">▼</span>
+                </button>
+                <button class="menu-toggle" data-panel="manual">
+                    <span class="menu-icon">🎚️</span>
+                    <span class="menu-label">Manual Controls</span>
+                    <span class="menu-arrow">▼</span>
+                </button>
+                <button class="menu-toggle" data-panel="npc">
+                    <span class="menu-icon">🤖</span>
+                    <span class="menu-label">NPC Spawning</span>
+                    <span class="menu-arrow">▼</span>
+                </button>
+                <button class="menu-toggle" data-panel="workflow">
+                    <span class="menu-icon">🔄</span>
+                    <span class="menu-label">Workflow</span>
+                    <span class="menu-arrow">▼</span>
+                </button>
+                <button class="menu-toggle" data-panel="export">
+                    <span class="menu-icon">💾</span>
+                    <span class="menu-label">Export & Metrics</span>
+                    <span class="menu-arrow">▼</span>
+                </button>
+            </nav>
+
+            <!-- Collapsible Panels Container -->
+            <div class="collapsible-panels" id="collapsiblePanels">
+                <!-- Prompt Generation Panel -->
+                <aside class="collapsible-panel" id="promptPanel">
+                    <div class="panel-content">
+                        <h3>✨ Prompt-Based Generation</h3>
+                        <div class="prompt-section">
+                            <label for="blendPrompt">Describe your motion blend:</label>
+                            <textarea 
+                                id="blendPrompt" 
+                                placeholder="e.g., Mix walking and dancing smoothly, 70% dance..."
+                                rows="3"
+                            ></textarea>
+                            
+                            <div class="suggestion-chips">
+                                <button class="chip" data-prompt="Mix idle and combat attack, 50/50">Idle + Combat</button>
+                                <button class="chip" data-prompt="Blend running into jumping smoothly">Run → Jump</button>
+                                <button class="chip" data-prompt="Walk to dance transition, 80% dance">Walk → Dance</button>
+                            </div>
+
+                            <div class="quality-selector">
+                                <label>Quality:</label>
+                                <select id="blendQuality">
+                                    <option value="low">Low (0.01 USDC/s)</option>
+                                    <option value="medium" selected>Medium (0.05 USDC/s)</option>
+                                    <option value="high">High (0.10 USDC/s)</option>
+                                    <option value="ultra">Ultra (0.25 USDC/s)</option>
+                                </select>
+                            </div>
+
+                            <div class="cost-estimate">
+                                <span>Estimated Cost:</span>
+                                <span id="estimatedCost" class="cost-value">~0.00 USDC</span>
+                            </div>
+
+                            <button id="generateBlendBtn" class="btn-primary" disabled>
+                                Generate Blend & Pay
+                            </button>
+
+                            <div id="paymentStatus" class="payment-status" style="display: none;">
+                                <span class="status-text"></span>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Manual Controls Panel -->
+                <aside class="collapsible-panel" id="manualPanel">
+                    <div class="panel-content">
+                        <h3>🎚️ Manual Blend Controls</h3>
+                        
+                        <div class="selected-motions">
+                            <div class="motion-slot" data-slot="1">
+                                <span class="slot-label">Motion A</span>
+                                <span class="slot-value" id="motionA">None</span>
+                            </div>
+                            <div class="motion-slot" data-slot="2">
+                                <span class="slot-label">Motion B</span>
+                                <span class="slot-value" id="motionB">None</span>
+                            </div>
+                        </div>
+
+                        <div class="blend-controls">
+                            <!-- Temporal Conditioning Mode (from BlendAnim paper) -->
+                            <label for="blendMode">Blend Mode (ω(t) function):</label>
+                            <select id="blendMode" class="blend-mode-select">
+                                <option value="step">Step Function (Hard Boundary)</option>
+                                <option value="linear">Linear Ramp</option>
+                                <option value="smoothstep" selected>Smoothstep (Paper Method)</option>
+                                <option value="custom">Custom Curve</option>
+                            </select>
+                            <p class="mode-description" id="modeDescription">Smooth temporal conditioning with C² continuity</p>
+
+                            <!-- Transition Zone Control -->
+                            <label for="transitionZone">Transition Zone (frames):
+                                <span class="info-icon" title="Number of frames for smooth blend transition">ⓘ</span>
+                            </label>
+                            <input type="range" id="transitionZone" min="0" max="60" step="1" value="10">
+                            <span id="transitionZoneValue">10</span>
+
+                            <label for="blendWeight">
+                                Blend Weight: <span id="blendWeightValue">0.5</span>
+                            </label>
+                            <input 
+                                type="range" 
+                                id="blendWeight" 
+                                min="0" 
+                                max="1" 
+                                step="0.01" 
+                                value="0.5"
+                            >
+                            
+                            <label for="transitionSpeed">
+                                Transition Speed: <span id="transitionSpeedValue">1.0x</span>
+                            </label>
+                            <input 
+                                type="range" 
+                                id="transitionSpeed" 
+                                min="0.1" 
+                                max="3.0" 
+                                step="0.1" 
+                                value="1.0"
+                            >
+
+                            <!-- Skeleton-aware Processing Toggle -->
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="skeletonAware" checked>
+                                Skeleton-aware Blending
+                                <span class="info-icon" title="Respects joint hierarchy during blending">ⓘ</span>
+                            </label>
+                        </div>
+
+                        <!-- Temporal Curve Visualization -->
+                        <div class="curve-visualization">
+                            <label>Blend Curve ω(t):</label>
+                            <canvas id="blendCurveCanvas" width="280" height="90" class="blend-curve-canvas"></canvas>
+                            <div class="curve-legend">
+                                <span class="legend-item"><span class="legend-color" style="background: #2ecc71;"></span> Motion A</span>
+                                <span class="legend-item"><span class="legend-color" style="background: #e67e22;"></span> Motion B</span>
+                            </div>
+                        </div>
+
+                        <button id="applyBlendBtn" class="btn-secondary" disabled>Apply Blend</button>
+                    </div>
+                </aside>
+
+                <!-- NPC Spawning Panel -->
+                <aside class="collapsible-panel" id="npcPanel">
+                    <div class="panel-content">
+                        <h3>🤖 NPC Spawning</h3>
+                        
+                        <div class="npc-config">
+                            <label for="characterType">Character Type:</label>
+                            <select id="characterType">
+                                <option value="humanoid">Humanoid</option>
+                                <option value="creature">Creature</option>
+                                <option value="robot">Robot</option>
+                            </select>
+
+                            <label for="energyLevel">Energy Level:</label>
+                            <input type="range" id="energyLevel" min="1" max="100" value="50">
+                            <span id="energyLevelValue">50</span>
+                        </div>
+
+                        <div class="auto-spawn-controls">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="autoSpawn">
+                                Auto-spawn (every <input type="number" id="spawnInterval" min="1" max="60" value="5" style="width: 50px;"> seconds)
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="autoPayment">
+                                Auto-pay for spawns
+                            </label>
+                        </div>
+
+                        <button id="spawnNPCBtn" class="btn-primary">Spawn NPC</button>
+                        
+                        <h4 style="margin-top: 1.5rem; font-size: 0.9rem;">Transaction History</h4>
+                        <div id="transactionHistory" class="transaction-history">
+                            <div class="empty-state">No transactions yet</div>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Workflow Panel -->
+                <aside class="collapsible-panel workflow-panel" id="workflowPanel">
+                    <div class="panel-content">
+                        <div class="panel-header">
+                            <h3>🔄 Trustless Agent Loop</h3>
+                            <div class="workflow-controls">
+                                <button id="resetWorkflowBtn" class="icon-btn" title="Reset workflow">
+                                    <span>↻</span>
+                                </button>
+                                <button id="toggleWorkflowLayoutBtn" class="icon-btn" title="Toggle layout">
+                                    <span>⇅</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Workflow Graph Container -->
+                        <div id="workflowGraph" class="workflow-graph-container"></div>
+                        
+                        <!-- Workflow Status Bar -->
+                        <div class="workflow-status-bar">
+                            <div class="status-item">
+                                <span class="status-label">Current Step:</span>
+                                <span id="currentStepName" class="status-value">—</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Progress:</span>
+                                <span id="workflowProgress" class="status-value">0/10</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Correlation ID:</span>
+                                <span id="correlationId" class="status-value">—</span>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Export & Metrics Panel -->
+                <aside class="collapsible-panel" id="exportPanel">
+                    <div class="panel-content">
+                        <h3>💾 Export & Metrics</h3>
+                        <button id="exportBlendBtn" class="btn-secondary">Export Blend Data</button>
+                        <button id="mintNFTBtn" class="btn-secondary">Mint Motion NFT</button>
+                        <button id="openMetricsModal" class="btn-secondary">View Detailed Metrics</button>
+                    </div>
+                </aside>
+            </div>
+
+            <!-- Motion Library Overlay (Compact) -->
+            <aside class="motion-library motion-library-compact">
+                <div class="library-header">
+                    <h2>Motion Library</h2>
+                    <input type="text" id="searchMotions" placeholder="Search motions..." class="search-input">
+                </div>
+                
+                <div class="filter-section">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="locomotion">Locomotion</button>
+                    <button class="filter-btn" data-filter="combat">Combat</button>
+                    <button class="filter-btn" data-filter="idle">Idle</button>
+                    <button class="filter-btn" data-filter="dance">Dance</button>
+                </div>
+
+                <div id="motionList" class="motion-list">
+                    <!-- Motion cards will be dynamically loaded -->
+                </div>
+            </aside>
+
+            <!-- 3D Viewport -->
+            <section class="viewport">
+                <canvas id="threeCanvas"></canvas>
+                
+                <!-- Metrics Dashboard Overlay (Compact) -->
+                <div class="metrics-dashboard-compact" id="metricsDashboard">
+                    <div class="dashboard-header">
+                        <h3>📊 Blend Metrics</h3>
+                        <button id="toggleMetricsBtn" class="icon-btn">−</button>
+                    </div>
+                    <div class="dashboard-content">
+                        <!-- High-level summary cards -->
+                        <div class="metric-summary-card" data-metric="quality">
+                            <div class="metric-icon">⭐</div>
+                            <div class="metric-info">
+                                <div class="metric-label">Quality</div>
+                                <div class="metric-value" id="qualityTierValue">—</div>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-summary-card" data-metric="coverage">
+                            <div class="metric-icon">📊</div>
+                            <div class="metric-info">
+                                <div class="metric-label">Coverage</div>
+                                <div class="metric-value" id="coverageValue">—</div>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-summary-card" data-metric="diversity">
+                            <div class="metric-icon">🎨</div>
+                            <div class="metric-info">
+                                <div class="metric-label">Diversity</div>
+                                <div class="metric-value" id="diversityValue">—</div>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-summary-card" data-metric="smoothness">
+                            <div class="metric-icon">〰️</div>
+                            <div class="metric-info">
+                                <div class="metric-label">Smoothness</div>
+                                <div class="metric-value" id="smoothnessValue">—</div>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-summary-card" data-metric="cost">
+                            <div class="metric-icon">💰</div>
+                            <div class="metric-info">
+                                <div class="metric-label">Cost</div>
+                                <div class="metric-value" id="costValue">—</div>
+                            </div>
+                        </div>
+                        
+                        <button class="view-all-metrics-btn" id="viewAllMetricsBtn">View All Details →</button>
+                    </div>
+                </div>
+                
+                <!-- Metrics Detail Modal -->
+                <div id="metricsModal" class="modal" style="display: none;">
+                    <div class="modal-content modal-large">
+                        <div class="modal-header">
+                            <h2>📊 Blend Quality Metrics</h2>
+                            <button class="modal-close" id="closeMetricsModal">&times;</button>
+                        </div>
+                        
+                        <div class="modal-body metrics-modal-body">
+                            <!-- Quality Tier -->
+                            <div class="metric-detail-section">
+                                <h3>Quality Tier</h3>
+                                <div class="metric-card-detail">
+                                    <canvas id="qualityGaugeChart" width="300" height="150"></canvas>
+                                    <div class="tier-label-detail" id="tierLabel">—</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Coverage Chart -->
+                            <div class="metric-detail-section">
+                                <h3>Coverage Analysis <span class="info-tooltip" title="Measures pose diversity across 30-frame windows">ℹ️</span></h3>
+                                <div class="metric-card-detail">
+                                    <canvas id="coverageChart" width="500" height="250"></canvas>
+                                </div>
+                            </div>
+                            
+                            <!-- Diversity Metrics -->
+                            <div class="metric-detail-section">
+                                <h3>Diversity Metrics <span class="info-tooltip" title="Local and global motion variation">ℹ️</span></h3>
+                                <div class="metric-card-detail">
+                                    <canvas id="diversityChart" width="500" height="250"></canvas>
+                                </div>
+                            </div>
+                            
+                            <!-- Smoothness Heatmap -->
+                            <div class="metric-detail-section">
+                                <h3>Joint Smoothness (L2 velocity) <span class="info-tooltip" title="Lower values indicate smoother motion">ℹ️</span></h3>
+                                <div class="metric-card-detail">
+                                    <canvas id="smoothnessChart" width="500" height="300"></canvas>
+                                </div>
+                            </div>
+                            
+                            <!-- Cost Breakdown -->
+                            <div class="metric-detail-section">
+                                <h3>Cost Analysis</h3>
+                                <div class="metric-card-detail cost-breakdown-detail">
+                                    <canvas id="costChart" width="300" height="300"></canvas>
+                                    <div class="cost-summary-detail" id="costSummary">$0.00 USDC</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="viewport-overlay">
+                    <div class="fps-counter" id="fpsCounter">60 FPS</div>
+                    <div class="camera-controls">
+                        <button class="control-btn" id="resetCamera">🎥 Reset View</button>
+                        <button class="control-btn" id="toggleGrid">📐 Toggle Grid</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Oracle Decision Explorer Modal -->
+        <div id="oracleModal" class="modal" style="display: none;">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2>🔮 Oracle Decision Analysis</h2>
+                    <button class="modal-close" id="closeOracleModal">&times;</button>
+                </div>
+                
+                <div class="modal-body">
+                    <!-- Decision Summary -->
+                    <div class="decision-summary">
+                        <div class="decision-badge" id="decisionBadge">PENDING</div>
+                        <div class="separation-score">
+                            <label>Separation Score:</label>
+                            <div class="score-bar">
+                                <div class="score-fill" id="separationScoreFill" style="width: 0%"></div>
+                                <div class="score-threshold" style="left: 42%"></div>
+                            </div>
+                            <span id="separationScoreValue">0.00</span>
+                        </div>
+                    </div>
+                    
+                    <!-- kNN Neighbors -->
+                    <div class="oracle-section">
+                        <h3>k-Nearest Neighbors (k=15)</h3>
+                        <div id="knnNeighbors" class="knn-grid">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    
+                    <!-- RkCNN Ensemble -->
+                    <div class="oracle-section">
+                        <h3>RkCNN Ensemble Votes</h3>
+                        <canvas id="rkcnnChart" width="600" height="300"></canvas>
+                    </div>
+                    
+                    <!-- Reason Codes -->
+                    <div class="oracle-section">
+                        <h3>Decision Reasoning</h3>
+                        <div id="reasonCodes" class="reason-tags">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    
+                    <!-- Safety Flags -->
+                    <div class="oracle-section" id="safetySection" style="display: none;">
+                        <h3>⚠️ Safety Flags</h3>
+                        <div id="safetyFlags" class="alert-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Transaction Routing Modal (New) -->
+        <div id="routingModal" class="modal" style="display: none;">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2>🔀 Transaction Routing</h2>
+                    <button class="modal-close" id="closeRoutingModal">&times;</button>
+                </div>
+                
+                <div class="modal-body">
+                    <!-- Routing Decision -->
+                    <div class="routing-decision">
+                        <div class="route-badge" id="routeBadge">HYBRID</div>
+                        <p id="routeRationale">—</p>
+                    </div>
+                    
+                    <!-- Sankey Diagram -->
+                    <div class="routing-section">
+                        <h3>Operation Flow</h3>
+                        <svg id="sankeyDiagram" width="700" height="400"></svg>
+                    </div>
+                    
+                    <!-- Gas Comparison -->
+                    <div class="routing-section">
+                        <h3>Cost Analysis</h3>
+                        <canvas id="gasComparisonChart" width="600" height="300"></canvas>
+                    </div>
+                    
+                    <!-- Payout Distribution -->
+                    <div class="routing-section">
+                        <h3>Payout Distribution</h3>
+                        <div class="payout-table">
+                            <div class="payout-row">
+                                <span>Creator (70%)</span>
+                                <span id="payoutCreator">$0.00</span>
+                            </div>
+                            <div class="payout-row">
+                                <span>Oracle (10%)</span>
+                                <span id="payoutOracle">$0.00</span>
+                            </div>
+                            <div class="payout-row">
+                                <span>Platform (15%)</span>
+                                <span id="payoutPlatform">$0.00</span>
+                            </div>
+                            <div class="payout-row">
+                                <span>Ops (5%)</span>
+                                <span id="payoutOps">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interactive Frame-by-Frame Timeline -->
+        <footer class="timeline-scrubber interactive-timeline">
+            <div class="timeline-header">
+                <div class="timeline-title">
+                    <h3>🎬 Motion Timeline</h3>
+                    <span class="timeline-info" id="timelineInfo">Drag motion strips to adjust blend weight</span>
+                </div>
+                <div class="playback-controls">
+                    <button id="playBtn" class="timeline-btn" title="Play">▶</button>
+                    <button id="pauseBtn" class="timeline-btn" title="Pause">⏸</button>
+                    <button id="stopBtn" class="timeline-btn" title="Stop">⏹</button>
+                    <button id="loopBtn" class="timeline-btn" title="Toggle Loop">🔁</button>
+                    <div class="time-display">
+                        <span id="currentTime" class="time-current">0:00.00</span>
+                        <span class="time-separator">/</span>
+                        <span id="duration" class="time-total">0:00.00</span>
+                    </div>
+                    <div class="blend-weight-display">
+                        <span class="weight-label">Blend:</span>
+                        <span id="currentBlendWeight" class="weight-value">50% / 50%</span>
+                        <span class="blend-mode-indicator" id="blendModeIndicator" title="Current blend mode">⚡ Smoothstep</span>
+                    </div>
+                    <div class="zoom-controls">
+                        <button id="zoomOutBtn" class="timeline-btn-sm" title="Zoom Out">−</button>
+                        <span class="zoom-level" id="zoomLevel">100%</span>
+                        <button id="zoomInBtn" class="timeline-btn-sm" title="Zoom In">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="timeline-workspace">
+                <div class="timeline-strips-container">
+                    <!-- Motion A Strip with Draggable Boundary -->
+                    <div class="motion-strip" id="motionAStrip">
+                        <div class="strip-label">
+                            <span class="strip-name" id="motionALabel">Capoeira</span>
+                            <span class="strip-percentage" id="motionAPercent">50%</span>
+                        </div>
+                        <div class="strip-frames-wrapper">
+                            <div class="strip-frames pattern-green" id="motionAFrames" style="width: 50%;">
+                                <div class="crosshatch-pattern crosshatch-green"></div>
+                            </div>
+                            <div class="drag-handle drag-handle-a" id="dragHandleA" title="Drag to adjust blend weight">
+                                <div class="handle-grip"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Motion B Strip -->
+                    <div class="motion-strip" id="motionBStrip">
+                        <div class="strip-label">
+                            <span class="strip-name" id="motionBLabel">Break Dance</span>
+                            <span class="strip-percentage" id="motionBPercent">50%</span>
+                        </div>
+                        <div class="strip-frames-wrapper">
+                            <div class="strip-frames pattern-orange" id="motionBFrames" style="width: 50%;">
+                                <div class="crosshatch-pattern crosshatch-orange"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Blend Output Strip -->
+                    <div class="motion-strip motion-strip-blend" id="blendStrip">
+                        <div class="strip-label">
+                            <span class="strip-name" id="blendLabel">Blended Output</span>
+                        </div>
+                        <div class="strip-frames strip-frames-blend" id="blendFrames">
+                            <div class="blend-gradient-bg" id="blendGradient"></div>
+                            <div class="pose-silhouettes" id="poseSilhouettes"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Playhead -->
+                <div class="playhead-container">
+                    <div class="playhead" id="playhead">
+                        <div class="playhead-handle"></div>
+                        <div class="playhead-line"></div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Video Preview Modal -->
+    <div id="videoModal" class="video-modal" style="display: none;">
+        <div class="video-modal-overlay" id="videoModalOverlay"></div>
+        <div class="video-modal-content">
+            <div class="video-modal-header">
+                <h2>Motion Blend Video Preview</h2>
+                <button class="video-modal-close" id="closeVideoModal">×</button>
+            </div>
+            <div class="video-modal-body">
+                <div class="video-status" id="videoStatus">
+                    <div class="video-loading">
+                        <div class="spinner"></div>
+                        <p id="videoStatusText">Generating video with Veo 3.1...</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="videoProgress"></div>
+                        </div>
+                        <p class="progress-text" id="videoProgressText">0%</p>
+                    </div>
+                </div>
+                <div class="video-player-container" id="videoPlayerContainer" style="display: none;">
+                    <video id="videoPlayer" controls autoplay loop>
+                        <source id="videoSource" type="video/mp4">
+                        Your browser does not support video playback.
+                    </video>
+                    <div class="video-info">
+                        <div class="video-meta">
+                            <span class="video-meta-label">Blend:</span>
+                            <span id="videoBlendName">Capoeira → Break Dance</span>
+                        </div>
+                        <div class="video-meta">
+                            <span class="video-meta-label">Duration:</span>
+                            <span id="videoDuration">8s</span>
+                        </div>
+                        <div class="video-meta">
+                            <span class="video-meta-label">Resolution:</span>
+                            <span id="videoResolution">720p</span>
+                        </div>
+                    </div>
+                    <div class="video-actions">
+                        <button id="downloadVideoBtn" class="btn-primary">Download Video</button>
+                        <button id="shareVideoBtn" class="btn-secondary">Share Link</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating View Blend Button -->
+    <button id="viewBlendBtn" class="view-blend-btn" style="display: none;" title="View generated blend video">
+        <span class="view-blend-icon">🎬</span>
+        <span class="view-blend-text">View Blend Video</span>
+        <span class="view-blend-badge" id="viewBlendBadge">Ready</span>
+    </button>
+
+    <!-- Scripts -->
+    <script src="workflow-visualizer.js"></script>
+    <script src="metrics-dashboard.js"></script>
+    <script src="visualizer.js"></script>
+    <script>
+        // Initialize visualizer on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            const visualizer = new MotionVisualizer();
+            visualizer.init();
+            
+            // Make visualizer globally accessible for debugging
+            window.visualizer = visualizer;
+        });
+    </script>
+</body>
+</html>

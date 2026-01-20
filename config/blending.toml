@@ -1,0 +1,108 @@
+# blendanim Integration Configuration
+
+# Blending Service Settings
+[blending]
+use_gpu = false  # Set to true for CUDA-accelerated processing
+device = "cpu"   # "cpu" or "cuda"
+
+# Metric Calculation Parameters (aligned with blendanim)
+[metrics]
+coverage_tmin = 30              # Window size for coverage metric
+coverage_threshold = 2.0        # Cost threshold for coverage
+local_diversity_tmin = 15       # Window for local diversity
+global_diversity_tmin = 30      # Window for global diversity (NN-DP)
+
+# Key joints for per-joint analysis (SMPLH skeleton)
+key_joints = ["Pelvis", "LeftWrist", "RightWrist", "LeftFoot", "RightFoot"]
+
+# Quality Tier Thresholds
+[quality_tiers.ultra]
+min_coverage = 0.90
+max_l2_velocity = 0.03
+max_l2_acceleration = 0.015
+min_smoothness = 0.94
+price_per_second = 0.25  # USDC
+
+[quality_tiers.high]
+min_coverage = 0.85
+max_l2_velocity = 0.07
+max_l2_acceleration = 0.040
+min_smoothness = 0.86
+price_per_second = 0.10  # USDC
+
+[quality_tiers.medium]
+min_coverage = 0.75
+max_l2_velocity = 0.10
+max_l2_acceleration = 0.050
+min_smoothness = 0.80
+price_per_second = 0.05  # USDC
+
+[quality_tiers.low]
+min_coverage = 0.65
+max_l2_velocity = 0.15
+max_l2_acceleration = 0.080
+min_smoothness = 0.70
+price_per_second = 0.01  # USDC
+
+# Gemini Integration Settings
+[gemini]
+model_name = "gemini-2.0-flash-exp"  # Gemini 3.0 Pro Preview successor
+embedding_model = "text-embedding-004"
+api_key_env = "GEMINI_API_KEY"
+
+# File processing
+max_batch_size = 10
+upload_timeout_seconds = 60
+processing_poll_interval = 2
+
+# Embedding settings
+embedding_task_type = "retrieval_document"
+embedding_dimension = 768
+
+# FBX Processing
+[fbx]
+default_fps = 30
+default_joint_count = 52  # Mixamo skeleton
+supported_formats = ["fbx", "FBX"]
+
+# Motion extraction
+extract_positions = true
+extract_rotations = false  # Not yet implemented
+extract_metadata = true
+
+# Fallback behavior
+use_fallback_on_error = true
+fallback_frame_count_min = 60
+fallback_frame_count_max = 300
+
+# Blending Methods
+[blending_methods]
+default_method = "temporal_conditioning"
+
+# Available methods:
+# - linear: Simple linear interpolation
+# - slerp: Spherical linear interpolation (requires quaternions)
+# - temporal_conditioning: Single-shot temporal conditioning (blendanim)
+
+# Performance Settings
+[performance]
+enable_caching = true
+cache_dir = ".cache/motions"
+max_cache_size_mb = 1000
+
+# Parallel processing
+max_workers = 4
+batch_processing = true
+
+# Logging
+[logging]
+level = "INFO"  # DEBUG, INFO, WARNING, ERROR
+log_metrics = true
+log_blend_operations = true
+log_file = "logs/blending.log"
+
+# Development Settings
+[development]
+enable_profiling = false
+save_intermediate_results = false
+debug_visualizations = false

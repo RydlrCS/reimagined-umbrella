@@ -1,9 +1,12 @@
 """
 Commerce Orchestrator - handles Circle payments and USDC settlement.
+Integrates with Circle's Wallets API for motion commerce payments.
 """
 import logging
 import time
 import uuid
+import os
+import requests
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 
@@ -26,7 +29,15 @@ logger = logging.getLogger(__name__)
 class CircleWalletConfig(BaseModel):
     """Circle wallet configuration."""
     api_key: str
-    api_endpoint: str = "https://api.circle.com/v1"
+    api_endpoint: str = "https://api.circle.com/v1"  # Production endpoint
+    
+    @classmethod
+    def from_env(cls):
+        """Load from environment variables."""
+        api_key = os.getenv("CIRCLE_API_KEY")
+        if not api_key:
+            raise CircleError("CIRCLE_API_KEY not set - using fallback mode")
+        return cls(api_key=api_key)
 
 
 class PaymentIntentRequest(BaseModel):
@@ -41,32 +52,95 @@ class PaymentIntentRequest(BaseModel):
 
 class CircleClient:
     """
-    Circle API client wrapper.
+    Circle API client for Wallets and payment processing.
     
-    In production: integrate with Circle SDK for:
+    Integrates with Circle's RESTful API for:
     - Wallet creation and management
     - Payment processing
-    - USDC transfers via Gateway/CCTP
+    - USDC transfers
     
-    For demo: simulate Circle API responses.
+    Uses Bearer token authentication with Circle API keys.
     """
     
     def __init__(self, config: CircleWalletConfig):
         self.config = config
+        self.session = requests.Session()
+        self.session.headers.update({
+            "Authorization": f"Bearer {config.api_key}",
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        })
+    
+    def _make_request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
+        """Make authenticated request to Circle API."""
+        url = f"{self.config.api_endpoint}{endpoint}"
+        
+        try:
+            response = self.session.request(method, url, **kwargs)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 401:
+                raise CircleError("Circle API authentication failed - check API key")
+            raise CircleError(f"Circle API error: {e}")
+        except Exception as e:
+            raise CircleError(f"Circle API request failed: {e}")
     
     @retry_on_dependency_error(max_attempts=3)
-    def create_wallet(self, user_id: str) -> Dict[str, Any]:
-        """Create Circle wallet for user."""
+    def get_wallets(self) -> Dict[str, Any]:
+        """Retrieve wallets to verify API connectivity."""
+        logger.info("Fetching Circle wallets")
+        return self._make_request("GET", "/w3s/wallets")
+    
+    @retry_on_dependency_error(max_attempts=3)
+    def create_wallet(self, user_id: str, blockchain: str = "ETH-SEPOLIA") -> Dict[str, Any]:
+        """
+        Create Circle Developer-Controlled Wallet for motion commerce.
+        
+        Uses Circle's Programmable Wallets API v1/w3s/wallets endpoint.
+        Developer-Controlled Wallets are ideal for motion commerce as they:
+        - Require only API key (no client key needed)
+        - Support USDC transfers on Arc Network
+        - Enable automated royalty distribution
+        
+        Args:
+            user_id: User identifier for wallet metadata
+            blockchain: Blockchain network (default: ETH-SEPOLIA for Arc testnet)
+        
+        Returns:
+            Wallet creation response with wallet_id and address
+        """
         logger.info(f"Creating Circle wallet for user: {user_id}")
         
-        # Simulate API call
-        wallet_id = f"wallet_{uuid.uuid4().hex[:16]}"
+        payload = {
+            "idempotencyKey": f"wallet-{user_id}-{uuid.uuid4().hex[:8]}",
+            "accountType": "SCA",  # Smart Contract Account
+            "blockchain": blockchain,
+            "metadata": [
+                {"key": "user_id", "value": user_id},
+                {"key": "purpose", "value": "motion_commerce"}
+            ]
+        }
         
+        response = self._make_request("POST", "/w3s/wallets", json=payload)
+        
+        # Circle response format:
+        # {
+        #   "data": {
+        #     "walletId": "...",
+        #     "address": "0x...",
+        #     "blockchain": "ETH-SEPOLIA",
+        #     "accountType": "SCA",
+        #     "state": "LIVE"
+        #   }
+        # }
+        
+        wallet_data = response.get("data", {})
         return {
-            "wallet_id": wallet_id,
-            "blockchain": "ETH",
-            "address": f"0x{'0' * 39}{user_id[:1]}",
-            "status": "active",
+            "wallet_id": wallet_data.get("walletId"),
+            "blockchain": wallet_data.get("blockchain"),
+            "address": wallet_data.get("address"),
+            "status": wallet_data.get("state", "").lower(),
         }
     
     @retry_on_dependency_error(max_attempts=3)
@@ -76,13 +150,22 @@ class CircleClient:
         amount_usdc: str,
         description: str,
     ) -> Dict[str, Any]:
-        """Create payment intent."""
+        """
+        Create Circle payment intent for motion usage billing.
+        
+        Note: Circle's Payments API may use different endpoint structure.
+        This is a conceptual implementation - actual endpoint TBD from Circle docs.
+        For motion commerce, may use direct transfers instead of payment intents.
+        """
         logger.info(
             f"Creating payment intent: {amount_usdc} USDC",
             extra={"wallet_id": wallet_id},
         )
         
-        # Simulate API call
+        # Note: Actual Circle API may not have a payment intents endpoint
+        # For developer-controlled wallets, we typically execute direct transfers
+        # Keeping stub for now until Circle API documentation confirms endpoint
+        
         intent_id = f"pi_{uuid.uuid4().hex[:16]}"
         
         return {
@@ -100,25 +183,73 @@ class CircleClient:
         from_wallet_id: str,
         to_address: str,
         amount_usdc: str,
-        chain: str = "ARC",
+        token_id: str = "36b1737c-xxxx-xxxx-xxxx-xxxxxxxxxxxx",  # USDC token ID
+        blockchain: str = "ETH-SEPOLIA",
     ) -> Dict[str, Any]:
-        """Execute USDC transfer on specified chain."""
+        """
+        Execute USDC transfer via Circle Programmable Wallets API.
+        
+        Uses /w3s/developer/transactions/transfer endpoint for outbound transfers.
+        
+        Args:
+            from_wallet_id: Source wallet ID (must be developer-controlled)
+            to_address: Destination blockchain address
+            amount_usdc: Amount in USDC (e.g., "10.50")
+            token_id: Circle token ID for USDC on target blockchain
+            blockchain: Target blockchain (ETH-SEPOLIA for Arc testnet)
+        
+        Returns:
+            Transfer response with transaction ID and status
+        """
         logger.info(
             f"Executing transfer: {amount_usdc} USDC to {to_address}",
-            extra={"chain": chain},
+            extra={"blockchain": blockchain},
         )
         
-        # Simulate blockchain transaction
-        tx_hash = f"0x{uuid.uuid4().hex}{uuid.uuid4().hex[:32]}"
+        # Convert USDC amount to smallest unit (6 decimals)
+        # Example: "10.50" -> "10500000"
+        amount_smallest_unit = str(int(float(amount_usdc) * 1_000_000))
         
+        payload = {
+            "idempotencyKey": f"transfer-{uuid.uuid4().hex}",
+            "walletId": from_wallet_id,
+            "tokenId": token_id,
+            "destinationAddress": to_address,
+            "amounts": [amount_smallest_unit],
+            "fee": {
+                "type": "level",
+                "config": {
+                    "feeLevel": "MEDIUM"
+                }
+            }
+        }
+        
+        response = self._make_request(
+            "POST",
+            "/w3s/developer/transactions/transfer",
+            json=payload
+        )
+        
+        # Circle response format:
+        # {
+        #   "data": {
+        #     "id": "transaction-id",
+        #     "state": "INITIATED",
+        #     "walletId": "...",
+        #     "blockchain": "ETH-SEPOLIA",
+        #     "txHash": "0x..." (after confirmation)
+        #   }
+        # }
+        
+        transfer_data = response.get("data", {})
         return {
-            "tx_hash": tx_hash,
-            "chain": chain,
+            "tx_id": transfer_data.get("id"),
+            "tx_hash": transfer_data.get("txHash"),
+            "blockchain": transfer_data.get("blockchain"),
             "from": from_wallet_id,
             "to": to_address,
             "amount": amount_usdc,
-            "status": "confirmed",
-            "block_number": 12345678,
+            "status": transfer_data.get("state", "").lower(),
         }
 
 
@@ -175,11 +306,20 @@ class CommerceOrchestrator:
     
     def __init__(
         self,
-        circle_config: CircleWalletConfig,
+        circle_config: Optional[CircleWalletConfig] = None,
         x402_facilitator_url: str = "https://x402.example.com",
         usdc_token_address: str = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
         payout_split: Optional[PayoutSplit] = None,
     ):
+        # Initialize Circle client - use env config if not provided
+        if circle_config is None:
+            try:
+                circle_config = CircleWalletConfig.from_env()
+            except CircleError:
+                # Fallback mode without Circle integration
+                logger.warning("Circle API not configured - running in fallback mode")
+                circle_config = CircleWalletConfig(api_key="fallback")
+        
         self.circle_client = CircleClient(circle_config)
         self.x402_verifier = X402Verifier(x402_facilitator_url)
         self.usdc_token_address = usdc_token_address
@@ -370,3 +510,68 @@ class CommerceOrchestrator:
             "status": "active",
             "next_billing_date": int(time.time()) + (30 * 24 * 3600),
         }
+    
+    def create_user_wallet(self, user_id: str, blockchain: str = "ETH-SEPOLIA") -> Dict[str, Any]:
+        """
+        Create Circle wallet for user.
+        
+        Args:
+            user_id: User identifier
+            blockchain: Target blockchain network
+        
+        Returns:
+            Wallet creation result
+        """
+        logger.info(f"Creating wallet for user: {user_id}")
+        return self.circle_client.create_wallet(user_id, blockchain)
+    
+    def process_payment(
+        self,
+        wallet_id: str,
+        amount_usdc: str,
+        description: str,
+    ) -> Dict[str, Any]:
+        """
+        Process payment intent.
+        
+        Args:
+            wallet_id: Source wallet ID
+            amount_usdc: Payment amount in USDC
+            description: Payment description
+        
+        Returns:
+            Payment intent result
+        """
+        logger.info(f"Processing payment: {amount_usdc} USDC")
+        return self.circle_client.create_payment_intent(
+            wallet_id=wallet_id,
+            amount_usdc=amount_usdc,
+            description=description,
+        )
+    
+    def distribute_royalty(
+        self,
+        from_wallet_id: str,
+        creator_address: str,
+        amount_usdc: str,
+        blockchain: str = "ETH-SEPOLIA",
+    ) -> Dict[str, Any]:
+        """
+        Distribute royalty payment to creator.
+        
+        Args:
+            from_wallet_id: Source wallet ID (platform wallet)
+            creator_address: Creator's blockchain address
+            amount_usdc: Royalty amount in USDC
+            blockchain: Target blockchain
+        
+        Returns:
+            Transfer result
+        """
+        logger.info(f"Distributing royalty: {amount_usdc} USDC to {creator_address}")
+        return self.circle_client.execute_transfer(
+            from_wallet_id=from_wallet_id,
+            to_address=creator_address,
+            amount_usdc=amount_usdc,
+            blockchain=blockchain,
+        )

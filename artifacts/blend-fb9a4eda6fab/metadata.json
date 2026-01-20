@@ -1,0 +1,72 @@
+{
+  "blend_id": "blend-fb9a4eda6fab",
+  "created_at": "1768472737.1993434",
+  "motions": [
+    {
+      "path": "data/mixamo_anims/fbx/michele/michelle.fbx/Salsa Dancing Twirl And Clap.fbx",
+      "name": "Salsa Dancing Twirl And Clap",
+      "total_frames": 60,
+      "duration_seconds": 2.0,
+      "fps": 30
+    },
+    {
+      "path": "data/mixamo_anims/fbx/michele/michelle.fbx/Swing Dance Charleston _Crazy Legs_.fbx",
+      "name": "Swing Dance Charleston _Crazy Legs_",
+      "total_frames": 60,
+      "duration_seconds": 2.0,
+      "fps": 30
+    },
+    {
+      "path": "data/mixamo_anims/fbx/michele/michelle.fbx/Wave Hip Hop Dance Variation One.fbx",
+      "name": "Wave Hip Hop Dance Variation One",
+      "total_frames": 160,
+      "duration_seconds": 5.333333333333333,
+      "fps": 30
+    }
+  ],
+  "segments": [
+    {
+      "motion_index": 0,
+      "motion_name": "Salsa Dancing Twirl And Clap",
+      "weight": 0.43,
+      "crosshatch_offset": 0.8680445151033387,
+      "start_frame": 30,
+      "end_frame": 55,
+      "frame_count": 25,
+      "duration_seconds": 0.8333333333333334
+    },
+    {
+      "motion_index": 1,
+      "motion_name": "Swing Dance Charleston _Crazy Legs_",
+      "weight": 0.43,
+      "crosshatch_offset": 0.9491255961844197,
+      "start_frame": 33,
+      "end_frame": 58,
+      "frame_count": 25,
+      "duration_seconds": 0.8333333333333334
+    },
+    {
+      "motion_index": 2,
+      "motion_name": "Wave Hip Hop Dance Variation One",
+      "weight": 0.14,
+      "crosshatch_offset": 0.2288770053475936,
+      "start_frame": 31,
+      "end_frame": 53,
+      "frame_count": 22,
+      "duration_seconds": 0.7333333333333333
+    }
+  ],
+  "transition_frames": 30,
+  "blend_mode": "smoothstep",
+  "total_artifacts": 60,
+  "aggregate_metrics": {
+    "coverage": 0.30097087378640774,
+    "local_diversity": 0.03942807277410609,
+    "global_diversity": 0.5860094601746558,
+    "l2_velocity": 0.01478545516921588,
+    "l2_acceleration": 0.014381897494983267,
+    "blend_area_smoothness": 0.9716592713627247,
+    "quality_tier": "low",
+    "per_joint_metrics": null
+  }
+}

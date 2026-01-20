@@ -1,0 +1,277 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                   KINETIC LEDGER MOTION VISUALIZER                           ║
+║                       QUICK REFERENCE CARD v2.1                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🌐 SERVER: http://localhost:8000
+📊 API DOCS: http://localhost:8000/docs
+❤️ HEALTH: http://localhost:8000/health
+🎬 VIDEO MODE: http://localhost:8000/?veo_enabled=true  🆕
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 FEATURE FLAGS (URL Parameters)  🆕
+
+  ?timeline_mode=true     → Timeline-only view (hide wallet/metrics)
+  ?veo_enabled=true       → Enable Veo 3.1 video generation
+  ?fbx_loader=true        → Enable Three.js FBXLoader
+  ?auto_load=true         → Auto-load demo on page load
+  ?debug=true             → Show console debug logs
+  ?reasoning=true         → Enable Nano Banana thinking mode
+  
+  EXAMPLES:
+    http://localhost:8000/?veo_enabled=true&debug=true
+    http://localhost:8000/?timeline_mode=true
+    
+═══════════════════════════════════════════════════════════════════════════════
+
+🎭 AUTO-DEMO: CAPOEIRA → BREAKDANCE
+  • Loads automatically on page load
+  • Both motions selected in library
+  • 50/50 blend applied after 500ms
+  • Character animates with color transition (indigo → purple)
+  • Timeline updates with blend segments
+  
+═══════════════════════════════════════════════════════════════════════════════
+
+🎮 CONTROLS
+
+  CAMERA:
+    Left-click drag   → Rotate
+    Right-click drag  → Pan
+    Scroll wheel      → Zoom
+    Reset View        → Reset camera position
+    Toggle Grid       → Show/hide grid lines
+
+  BLEND:
+    Click motion      → Select for blending
+    Drag slider       → Adjust blend weight (0.0 - 1.0)
+    Apply Blend       → Execute blend with animation
+    
+  PLAYBACK:
+    ▶ Play            → Start animation
+    ⏸ Pause          → Pause animation
+    ⏹ Stop           → Stop and reset to 0:00
+    
+═══════════════════════════════════════════════════════════════════════════════
+
+💰 WALLET INTEGRATION (Requires MetaMask)
+
+  1. Click "Connect Wallet"
+  2. Approve MetaMask popup
+  3. See address: 0x1234...5678
+  4. See balance: 0.00 USDC
+  5. Enable "Generate Blend & Pay" button
+  
+═══════════════════════════════════════════════════════════════════════════════
+
+🤖 PROMPT-BASED GENERATION
+
+  EXAMPLES:
+    • "Mix capoeira and breakdance smoothly"
+    • "Blend running into jumping, 80% jump"
+    • "Walk to dance transition"
+    
+  WORKFLOW:
+    1. Connect wallet (required)
+    2. Enter prompt in textarea
+    3. Select quality: Low / Medium / High / Ultra
+    4. See cost estimate
+    5. Click "Generate Blend & Pay"
+    6. Sign transaction with MetaMask
+    7. Watch blend appear in viewport
+    8. Check transaction history
+    
+═══════════════════════════════════════════════════════════════════════════════
+
+👥 NPC SPAWNING
+
+  MANUAL:
+    1. Select character type (Humanoid / Creature / Robot)
+    2. Set energy level (1-100)
+    3. Click "Spawn NPC"
+    4. Watch NPC appear and wander
+    
+  AUTO-SPAWN:
+    1. Enable "Auto-spawn" checkbox
+    2. Set interval (1-60 seconds)
+    3. Optional: Enable "Auto-pay for spawns"
+    4. NPCs spawn continuously
+    
+═══════════════════════════════════════════════════════════════════════════════
+
+🔌 API ENDPOINTS
+
+  GET  /                              → Serve UI
+  GET  /api/motions/library           → List FBX files
+  POST /api/prompts/analyze           → Parse prompt
+  POST /api/motions/blend/blendanim   → Generate blend with video  🆕
+  POST /api/motions/blend/generate    → Legacy blend endpoint
+  GET  /api/video/status/{operation}  → Poll Veo video status  🆕
+  POST /api/npcs/spawn                → Spawn NPC
+  POST /api/motions/mint              → Mint NFT
+  
+═══════════════════════════════════════════════════════════════════════════════
+
+🎬 VIDEO GENERATION (Veo 3.1)  🆕
+
+  WORKFLOW:
+    1. Generate blend via prompt or manual selection
+    2. System uploads FBX files to Gemini Files API
+    3. Nano Banana analyzes motion and creates description
+    4. Imagen generates first-frame keyframe
+    5. Veo 3.1 synthesizes 4-8 second video
+    6. Client polls /api/video/status every 5s
+    7. Modal auto-displays when video ready
+    
+  SPECS:
+    Resolution:  720p / 1080p / 4K
+    Aspect Ratio: 16:9 / 9:16 / 1:1
+    Duration:    4-8 seconds
+    Generation:  11s - 6min (typically ~2min for 1080p)
+    Audio:       Native background ambience
+    
+  UI CONTROLS:
+    • "View Blend Video" button appears during generation
+    • Progress badge shows status (⏳ processing / ✓ ready)
+    • Click to open modal with video player
+    • Download, share, or replay options
+    • ESC or click overlay to close modal
+    
+═══════════════════════════════════════════════════════════════════════════════
+
+📦 SAMPLE ANIMATIONS
+
+  • X Bot@Capoeira.fbx
+    Tags: dance, combat, acrobatic
+    Duration: 4.5s
+    Novelty: 75%
+    
+  • X Bot@Breakdance Freeze Var 2.fbx
+    Tags: dance, urban, freeze
+    Duration: 3.8s
+    Novelty: 82%
+    
+═══════════════════════════════════════════════════════════════════════════════
+
+💳 PAYMENT PRICING
+
+  QUALITY TIERS:
+    Low:    $0.01 USDC per second
+    Medium: $0.05 USDC per second
+    High:   $0.10 USDC per second
+    Ultra:  $0.25 USDC per second
+    
+  COST FORMULA:
+    Cost = BasePrice × Duration × √(MotionCount) × Complexity
+    
+  EXAMPLE:
+    Medium quality (0.05) × 5s × √2 × 1.5 ≈ 0.375 USDC
+    
+═══════════════════════════════════════════════════════════════════════════════
+
+🎨 VISUAL EFFECTS
+
+  BLEND COLOR:
+    0.0 (100% Capoeira)     → Indigo (#6366f1)
+    0.5 (50/50 Mix)         → Purple blend
+    1.0 (100% Breakdance)   → Purple (#8b5cf6)
+    
+  ANIMATION:
+    Transition: 2 seconds
+    Easing: Ease-in-out
+    Effects: Rotation + vertical bobbing
+    
+  NPCs:
+    Scale: 60% of main character
+    Colors: Random HSL (unique per NPC)
+    AI: Circular wandering pattern
+    
+═══════════════════════════════════════════════════════════════════════════════
+
+📊 PERFORMANCE
+
+  Target: 60 FPS
+  Scene: ~10 meshes (1 character + NPCs + grid)
+  Render: WebGL with shadows
+  Load: <1 second
+  
+═══════════════════════════════════════════════════════════════════════════════
+
+🛠️ TROUBLESHOOTING
+
+  UI NOT LOADING:
+    • Check server is running: ps aux | grep uvicorn
+    • Verify port 8000: lsof -i :8000
+    • Clear browser cache: Ctrl+Shift+R
+    
+  MOTIONS NOT SHOWING:
+    • Check FBX files: ls data/mixamo_anims/fbx/
+    • Verify backend logs: Check terminal output
+    • API test: curl http://localhost:8000/api/motions/library
+    
+  WALLET NOT CONNECTING:
+    • Install MetaMask extension
+    • Check network: Ethereum Mainnet or Arc Testnet
+    • Browser console: F12 for errors
+    
+  BLEND NOT APPLYING:
+    • Select two motions first (click cards)
+    • Verify Motion A and Motion B populated
+    • Check blend weight slider value
+    
+═══════════════════════════════════════════════════════════════════════════════
+
+📚 FILES
+
+  UI:
+    src/kinetic_ledger/ui/index.html       (228 lines)
+    src/kinetic_ledger/ui/styles.css       (656 lines)
+    src/kinetic_ledger/ui/visualizer.js    (922 lines)
+    
+  Backend:
+    src/kinetic_ledger/api/server.py       (450 lines)
+    
+  Tools:
+    scripts/download_mixamo.py             (350 lines)
+    test_ui_api.py                         (80 lines)
+    
+  Docs:
+    docs/UI_IMPLEMENTATION.md              (580 lines)
+    DEMO_GUIDE.md                          (420 lines)
+    IMPLEMENTATION_SUMMARY.md              (620 lines)
+    
+═══════════════════════════════════════════════════════════════════════════════
+
+🚀 QUICK START
+
+  1. Start server:
+     uvicorn src.kinetic_ledger.api.server:app --host 0.0.0.0 --port 8000 --reload
+     
+  2. Open browser:
+     http://localhost:8000
+     
+  3. Watch auto-demo:
+     Capoeira → Breakdance blend loads automatically
+     
+  4. Try manual blend:
+     Drag slider, click "Apply Blend"
+     
+  5. Connect wallet (optional):
+     Click "Connect Wallet", approve MetaMask
+     
+  6. Generate with prompt (optional):
+     Enter text, click "Generate Blend & Pay"
+     
+  7. Spawn NPCs:
+     Click "Spawn NPC", watch characters appear
+     
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ STATUS: READY FOR DEMO
+📅 Date: January 9, 2026
+📝 Version: 1.0.0
+🎯 Features: 30+ implemented
+📊 Tests: All passing
+
+═══════════════════════════════════════════════════════════════════════════════

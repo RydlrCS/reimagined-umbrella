@@ -1,0 +1,78 @@
+{
+  "blend_id": "blend-c9ba0454b4f6",
+  "created_at": "1768551811.9962761",
+  "motions": [
+    {
+      "path": "data/mixamo_anims/fbx/michele/michelle.fbx/Salsa Dancing Twirl And Clap.fbx",
+      "name": "Salsa Dancing Twirl And Clap",
+      "total_frames": 67,
+      "duration_seconds": 2.2333333333333334,
+      "fps": 30
+    },
+    {
+      "path": "data/mixamo_anims/fbx/michele/michelle.fbx/Swing Dance Charleston _Crazy Legs_.fbx",
+      "name": "Swing Dance Charleston _Crazy Legs_",
+      "total_frames": 74,
+      "duration_seconds": 2.466666666666667,
+      "fps": 30
+    },
+    {
+      "path": "data/mixamo_anims/fbx/michele/michelle.fbx/Wave Hip Hop Dance Variation One.fbx",
+      "name": "Wave Hip Hop Dance Variation One",
+      "total_frames": 505,
+      "duration_seconds": 16.833333333333332,
+      "fps": 30
+    }
+  ],
+  "segments": [
+    {
+      "motion_index": 0,
+      "weight": 0.43,
+      "crosshatch_offset": 0.6693163751987281,
+      "start_frame": 26,
+      "end_frame": 54,
+      "frame_count": 28,
+      "artifact_start_index": 0,
+      "artifact_end_index": 27,
+      "motion_name": "Salsa Dancing Twirl And Clap",
+      "duration_seconds": 0.9333333333333333
+    },
+    {
+      "motion_index": 1,
+      "weight": 0.43,
+      "crosshatch_offset": 0.8585055643879174,
+      "start_frame": 36,
+      "end_frame": 67,
+      "frame_count": 31,
+      "artifact_start_index": 58,
+      "artifact_end_index": 88,
+      "motion_name": "Swing Dance Charleston _Crazy Legs_",
+      "duration_seconds": 1.0333333333333334
+    },
+    {
+      "motion_index": 2,
+      "weight": 0.14,
+      "crosshatch_offset": 0.25026737967914436,
+      "start_frame": 108,
+      "end_frame": 178,
+      "frame_count": 70,
+      "artifact_start_index": 119,
+      "artifact_end_index": 188,
+      "motion_name": "Wave Hip Hop Dance Variation One",
+      "duration_seconds": 2.3333333333333335
+    }
+  ],
+  "transition_frames": 30,
+  "blend_mode": "smoothstep",
+  "total_artifacts": 189,
+  "aggregate_metrics": {
+    "coverage": 0.2375,
+    "local_diversity": 0.0022163451412136248,
+    "global_diversity": 0.014105197746564484,
+    "l2_velocity": 9.906856183352836e-06,
+    "l2_acceleration": 1.3960535499345264e-05,
+    "blend_area_smoothness": 0.999976133177956,
+    "quality_tier": "low",
+    "per_joint_metrics": null
+  }
+}

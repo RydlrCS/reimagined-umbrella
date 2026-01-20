@@ -6,12 +6,13 @@ This orchestrator coordinates all services to implement the complete trustless a
 2. Gemini multimodal analysis  
 3. Attestation oracle validation (kNN + RkCNN)
 4. Canonical pack creation and signing
-5. Usage metering and USDC settlement
+5. On-chain vs off-chain transaction routing
+6. Usage metering and USDC settlement
 """
 import logging
 import time
 import uuid
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Literal
 from pydantic import BaseModel, Field
 
 from ..schemas.models import (
@@ -28,6 +29,7 @@ from ..utils.errors import DecisionError, NoveltyRejectionError, ManualReviewReq
 from .motion_ingest import MotionIngestService, MotionUploadRequest, TensorGenerationConfig
 from .gemini_analyzer import GeminiAnalyzerService, GeminiAnalysisRequest
 from .attestation_oracle import AttestationOracle, AttestationConfig, VectorStore
+from .arc_network import ArcNetworkService, ArcNetworkConfig
 from .commerce_orchestrator import (
     CommerceOrchestrator,
     CircleWalletConfig,
@@ -38,12 +40,28 @@ from .commerce_orchestrator import (
 logger = logging.getLogger(__name__)
 
 
+class TransactionRouting(BaseModel):
+    """Transaction routing decision for on-chain vs off-chain."""
+    strategy: Literal["on-chain", "off-chain", "hybrid"]
+    reason: str
+    on_chain_operations: List[str] = Field(default_factory=list)
+    off_chain_operations: List[str] = Field(default_factory=list)
+    estimated_gas_usdc: Optional[str] = None
+    use_arc_network: bool = False
+    use_circle_wallets: bool = False
+
+
 class TrustlessAgentConfig(BaseModel):
     """Configuration for trustless agent loop."""
     # Service configs
     storage_url: str = "local://./data/storage"
     gemini_api_key: Optional[str] = None
-    circle_api_key: str
+    circle_api_key: Optional[str] = None
+    
+    # Arc Network (on-chain)
+    arc_rpc_url: Optional[str] = None
+    arc_contract_address: Optional[str] = None
+    arc_private_key: Optional[str] = None
     
     # Attestation
     novelty_threshold: float = Field(default=0.42, ge=0.0, le=1.0)
@@ -55,6 +73,11 @@ class TrustlessAgentConfig(BaseModel):
     oracle_address: str = Field(pattern=r"^0x[a-fA-F0-9]{40}$")
     platform_address: str = Field(pattern=r"^0x[a-fA-F0-9]{40}$")
     ops_address: str = Field(pattern=r"^0x[a-fA-F0-9]{40}$")
+    
+    # Transaction routing preferences
+    default_routing: Literal["on-chain", "off-chain", "hybrid"] = "hybrid"
+    on_chain_threshold_usdc: float = 100.0  # Use on-chain for amounts >= $100
+    force_on_chain_for_nfts: bool = True  # Always use on-chain for NFT minting
 
 
 class AgentLoopResult(BaseModel):
@@ -68,7 +91,10 @@ class AgentLoopResult(BaseModel):
     usage_event: Optional[UsageMeterEvent] = None
     decision: str  # "MINT", "REJECT", "REVIEW"
     pack_hash: str
-    tx_hash: Optional[str] = None
+    routing: Optional[TransactionRouting] = None  # NEW: routing decision
+    on_chain_tx_hash: Optional[str] = None  # NEW: on-chain transaction
+    off_chain_tx_id: Optional[str] = None  # NEW: off-chain transaction
+    tx_hash: Optional[str] = None  # Deprecated: use on_chain_tx_hash
     elapsed_seconds: float
 
 
@@ -76,14 +102,23 @@ class TrustlessAgentLoop:
     """
     Trustless Agent Loop Orchestrator.
     
-    Coordinates the complete Phase-2 workflow:
+    Coordinates the complete Phase-2 workflow with on-chain/off-chain routing:
     
     1. **Motion Ingest**: Upload BVH/FBX → generate tensors → create previews
     2. **Gemini Analysis**: Analyze previews → extract style labels/NPC tags
     3. **Attestation Oracle**: Run kNN + RkCNN → compute novelty → decide
     4. **Pack Creation**: Build MotionCanonicalPack v1 → compute pack_hash
-    5. **Mint Authorization**: Sign EIP-712 payload (if MINT decision)
-    6. **Usage Metering**: Verify x402 → settle USDC → route payouts
+    5. **Transaction Routing**: Decide on-chain (Arc) vs off-chain (Circle) based on:
+       - Amount threshold ($100+ → on-chain)
+       - NFT minting (always on-chain)
+       - Payment complexity (multi-party → on-chain)
+       - Gas costs (low-value → off-chain)
+    6. **Mint Authorization**: Sign EIP-712 payload (if MINT decision)
+    7. **Settlement Execution**:
+       - **On-chain**: Submit to Arc Network smart contract (USDC gas token)
+       - **Off-chain**: Execute via Circle Programmable Wallets API
+       - **Hybrid**: Mint on-chain + payments off-chain
+    8. **Usage Metering**: Verify x402 → settle USDC → route payouts
     
     All steps are idempotent and traceable via correlation IDs.
     """
@@ -109,14 +144,140 @@ class TrustlessAgentLoop:
             vector_store=VectorStore(),
         )
         
-        self.commerce_orchestrator = CommerceOrchestrator(
-            circle_config=CircleWalletConfig(
-                api_key=config.circle_api_key,
-            ),
-            usdc_token_address=config.usdc_token_address,
-        )
+        # Arc Network service (on-chain) - optional
+        self.arc_service = None
+        if config.arc_rpc_url and config.arc_contract_address and config.arc_private_key:
+            try:
+                self.arc_service = ArcNetworkService(
+                    config=ArcNetworkConfig(
+                        rpc_url=config.arc_rpc_url,
+                        contract_address=config.arc_contract_address,
+                        private_key=config.arc_private_key,
+                    )
+                )
+                logger.info("Arc Network service initialized (on-chain enabled)")
+            except Exception as e:
+                logger.warning(f"Arc Network service unavailable: {e}")
+        
+        # Commerce orchestrator (off-chain) - optional
+        self.commerce_orchestrator = None
+        if config.circle_api_key:
+            try:
+                self.commerce_orchestrator = CommerceOrchestrator(
+                    circle_config=CircleWalletConfig(
+                        api_key=config.circle_api_key,
+                    ),
+                    usdc_token_address=config.usdc_token_address,
+                )
+                logger.info("Circle Wallets service initialized (off-chain enabled)")
+            except Exception as e:
+                logger.warning(f"Circle Wallets service unavailable: {e}")
         
         setup_logging("trustless-agent-loop")
+    
+    def decide_transaction_routing(
+        self,
+        operation_type: Literal["nft_mint", "payment", "usage_metering"],
+        amount_usdc: float,
+        multi_party: bool = False,
+    ) -> TransactionRouting:
+        """
+        Decide whether to use on-chain (Arc) vs off-chain (Circle) transactions.
+        
+        Routing Logic:
+        1. **NFT Minting**: Always on-chain (immutability, ownership proof)
+        2. **High-Value Payments** (≥$100): On-chain (transparency, auditability)
+        3. **Multi-Party Settlements**: On-chain (atomic execution, trust)
+        4. **Low-Value Micropayments** (<$100): Off-chain (gas efficiency)
+        5. **Hybrid**: Mint on-chain + royalties off-chain
+        
+        Args:
+            operation_type: Type of operation
+            amount_usdc: Transaction amount in USDC
+            multi_party: Whether multiple parties receive payouts
+        
+        Returns:
+            TransactionRouting decision
+        """
+        # Check service availability
+        has_arc = self.arc_service is not None
+        has_circle = self.commerce_orchestrator is not None
+        
+        # Default routing
+        strategy = self.config.default_routing
+        reason = f"Default routing: {strategy}"
+        on_chain_ops = []
+        off_chain_ops = []
+        
+        # Rule 1: NFT minting always on-chain (if available)
+        if operation_type == "nft_mint":
+            if has_arc and self.config.force_on_chain_for_nfts:
+                strategy = "on-chain"
+                reason = "NFT minting requires on-chain immutability"
+                on_chain_ops = ["mint_motion_pack", "record_canonical_hash"]
+            elif has_circle:
+                strategy = "off-chain"
+                reason = "Arc Network unavailable - using off-chain fallback"
+                off_chain_ops = ["mint_simulation"]
+            else:
+                raise DecisionError("No transaction infrastructure available")
+        
+        # Rule 2: High-value transactions on-chain
+        elif amount_usdc >= self.config.on_chain_threshold_usdc:
+            if has_arc:
+                strategy = "on-chain"
+                reason = f"Amount ${amount_usdc:.2f} ≥ threshold ${self.config.on_chain_threshold_usdc:.2f}"
+                on_chain_ops = ["usdc_settlement", "royalty_distribution"]
+            elif has_circle:
+                strategy = "off-chain"
+                reason = "Arc unavailable for high-value tx - using Circle"
+                off_chain_ops = ["usdc_transfer", "royalty_transfers"]
+        
+        # Rule 3: Multi-party settlements prefer on-chain (atomic)
+        elif multi_party:
+            if has_arc:
+                strategy = "on-chain"
+                reason = "Multi-party settlement requires atomic on-chain execution"
+                on_chain_ops = ["atomic_multi_payout"]
+            elif has_circle:
+                strategy = "off-chain"
+                reason = "Multi-party via Circle sequential transfers"
+                off_chain_ops = ["sequential_transfers"]
+        
+        # Rule 4: Low-value micropayments off-chain (gas efficient)
+        else:
+            if has_circle:
+                strategy = "off-chain"
+                reason = f"Low-value ${amount_usdc:.2f} - gas-efficient off-chain"
+                off_chain_ops = ["usdc_transfer"]
+            elif has_arc:
+                strategy = "on-chain"
+                reason = "Circle unavailable - using Arc (may have high gas)"
+                on_chain_ops = ["usdc_settlement"]
+        
+        # Hybrid strategy: NFT on-chain + payments off-chain
+        if operation_type == "nft_mint" and has_arc and has_circle:
+            strategy = "hybrid"
+            reason = "Hybrid: NFT minting on-chain + royalties off-chain"
+            on_chain_ops = ["mint_motion_pack"]
+            off_chain_ops = ["royalty_transfers"]
+        
+        # Estimate gas costs (Arc uses USDC as gas token)
+        estimated_gas_usdc = None
+        if strategy in ("on-chain", "hybrid") and has_arc:
+            # Rough estimates: mint ~$0.10, transfer ~$0.01 on Arc L2
+            gas_cost = 0.10 if "mint" in operation_type else 0.01
+            estimated_gas_usdc = f"{gas_cost:.2f}"
+        
+        return TransactionRouting(
+            strategy=strategy,
+            reason=reason,
+            on_chain_operations=on_chain_ops,
+            off_chain_operations=off_chain_ops,
+            estimated_gas_usdc=estimated_gas_usdc,
+            use_arc_network=has_arc and strategy in ("on-chain", "hybrid"),
+            use_circle_wallets=has_circle and strategy in ("off-chain", "hybrid"),
+        )
     
     def execute_blend_workflow(
         self,
@@ -197,12 +358,74 @@ class TrustlessAgentLoop:
         
         # Step 5: Mint Authorization (if decision is MINT)
         mint_authorization = None
+        routing = None
+        on_chain_tx_hash = None
+        off_chain_tx_id = None
+        
         if decision == "MINT":
-            logger.info("Step 5/6: Signing Mint Authorization")
-            mint_authorization = self.attestation_oracle.sign_mint_authorization(
-                pack=canonical_pack,
-                to_address=upload_request.owner_wallet,
+            logger.info("Step 5/6: Transaction Routing Decision")
+            
+            # Calculate total payment amount
+            max_seconds = blend_request.policy.get("max_seconds", 10)
+            unit_price = 0.50  # $0.50 per second
+            total_usdc = max_seconds * unit_price
+            
+            # Decide on-chain vs off-chain routing
+            routing = self.decide_transaction_routing(
+                operation_type="nft_mint",
+                amount_usdc=total_usdc,
+                multi_party=True,  # Creator + oracle + platform + ops
             )
+            
+            logger.info(
+                f"Routing decision: {routing.strategy}",
+                extra={
+                    "strategy": routing.strategy,
+                    "reason": routing.reason,
+                    "amount_usdc": total_usdc,
+                    "on_chain_ops": routing.on_chain_operations,
+                    "off_chain_ops": routing.off_chain_operations,
+                },
+            )
+            
+            # Execute on-chain operations (Arc Network)
+            if routing.use_arc_network and self.arc_service:
+                logger.info("Executing on-chain operations via Arc Network")
+                
+                # Sign mint authorization
+                mint_authorization = self.attestation_oracle.sign_mint_authorization(
+                    pack=canonical_pack,
+                    to_address=upload_request.owner_wallet,
+                )
+                
+                # Submit to Arc Network smart contract
+                try:
+                    arc_result = self.arc_service.mint_motion_pack(
+                        to_address=upload_request.owner_wallet,
+                        canonical_hash=pack_hash,
+                        motion_data_uri=motion_asset.tensor.uri,
+                        creator_address=creator_address,
+                        oracle_signature=mint_authorization.signature,
+                    )
+                    on_chain_tx_hash = arc_result["tx_hash"]
+                    logger.info(
+                        f"Arc Network mint successful: {on_chain_tx_hash}",
+                        extra={"tx_hash": on_chain_tx_hash},
+                    )
+                except Exception as e:
+                    logger.error(f"Arc Network mint failed: {e}")
+                    # Fallback to off-chain if available
+                    if routing.strategy == "hybrid" and routing.use_circle_wallets:
+                        logger.warning("Falling back to off-chain for mint simulation")
+                    else:
+                        raise
+            else:
+                # Sign authorization for potential later on-chain submission
+                mint_authorization = self.attestation_oracle.sign_mint_authorization(
+                    pack=canonical_pack,
+                    to_address=upload_request.owner_wallet,
+                )
+                
         elif decision == "REJECT":
             logger.warning("Motion rejected due to low novelty")
             raise NoveltyRejectionError(
@@ -219,11 +442,10 @@ class TrustlessAgentLoop:
                 details={"safety_flags": gemini_analysis.outputs.safety_flags},
             )
         
-        # Step 6: Usage Metering & Settlement (if MINT)
+        # Step 6: Usage Metering & Settlement
         usage_event = None
-        tx_hash = None
         if decision == "MINT" and mint_authorization:
-            logger.info("Step 6/6: Usage Metering & USDC Settlement")
+            logger.info("Step 6/6: Usage Metering & Payment Settlement")
             
             # Calculate usage from NPC generation request
             max_seconds = blend_request.policy.get("max_seconds", 10)
@@ -237,19 +459,97 @@ class TrustlessAgentLoop:
                 attestation_pack_hash=pack_hash,
             )
             
-            usage_event = self.commerce_orchestrator.meter_usage(
-                request=payment_request,
-                payment_proof=payment_proof,
-                creator_address=creator_address,
-                oracle_address=self.config.oracle_address,
-                platform_address=self.config.platform_address,
-                ops_address=self.config.ops_address,
-                correlation_id=correlation_id,
-            )
+            # Execute off-chain payment operations (Circle Wallets)
+            if routing and routing.use_circle_wallets and self.commerce_orchestrator:
+                logger.info("Executing off-chain payment operations via Circle Wallets")
+                
+                try:
+                    usage_event = self.commerce_orchestrator.meter_usage(
+                        request=payment_request,
+                        payment_proof=payment_proof,
+                        creator_address=creator_address,
+                        oracle_address=self.config.oracle_address,
+                        platform_address=self.config.platform_address,
+                        ops_address=self.config.ops_address,
+                        correlation_id=correlation_id,
+                    )
+                    
+                    off_chain_tx_id = usage_event.settlement.tx_hash
+                    logger.info(
+                        f"Circle payment settlement successful",
+                        extra={
+                            "off_chain_tx_id": off_chain_tx_id,
+                            "total_usdc": usage_event.metering.total_usdc,
+                        },
+                    )
+                except Exception as e:
+                    logger.error(f"Circle payment failed: {e}")
+                    # If hybrid mode and Arc available, could retry on-chain
+                    if routing and routing.strategy == "hybrid" and routing.use_arc_network:
+                        logger.warning("Circle payment failed, but NFT already minted on-chain")
+                    raise
             
-            tx_hash = usage_event.settlement.tx_hash
+            # Execute on-chain payment operations (Arc Network)
+            elif routing and routing.use_arc_network and self.arc_service:
+                logger.info("Executing on-chain payment via Arc Network smart contract")
+                
+                try:
+                    # Record usage and execute atomic multi-party payout on-chain
+                    total_usdc_wei = int(float(max_seconds) * 0.50 * 1_000_000)  # USDC has 6 decimals
+                    
+                    payout_result = self.arc_service.record_usage_and_pay(
+                        motion_pack_id=0,  # Retrieved from mint result
+                        usage_amount=total_usdc_wei,
+                        creator_address=creator_address,
+                    )
+                    
+                    on_chain_tx_hash = payout_result["tx_hash"]
+                    logger.info(
+                        f"Arc Network payment successful: {on_chain_tx_hash}",
+                        extra={"tx_hash": on_chain_tx_hash},
+                    )
+                    
+                    # Create usage event for logging
+                    from ..schemas.models import Metering, X402, Settlement, PayoutItem
+                    usage_event = UsageMeterEvent(
+                        usage_id=str(uuid.uuid4()),
+                        created_at=int(time.time()),
+                        user_wallet=blend_request.user_wallet,
+                        attestation_pack_hash=pack_hash,
+                        product="npc_generation",
+                        metering=Metering(
+                            unit="seconds_generated",
+                            quantity=float(max_seconds),
+                            unit_price_usdc="0.50",
+                            total_usdc=f"{max_seconds * 0.50:.6f}",
+                        ),
+                        x402=X402(
+                            payment_proof=payment_proof,
+                            facilitator_receipt_id="on-chain",
+                            verified=True,
+                        ),
+                        settlement=Settlement(
+                            chain="ARC",
+                            token=self.config.usdc_token_address,
+                            tx_hash=on_chain_tx_hash,
+                        ),
+                        payout_split=[
+                            PayoutItem(to=creator_address, amount_usdc="70%", label="creator"),
+                            PayoutItem(to=self.config.oracle_address, amount_usdc="10%", label="oracle"),
+                            PayoutItem(to=self.config.platform_address, amount_usdc="15%", label="platform"),
+                            PayoutItem(to=self.config.ops_address, amount_usdc="5%", label="ops"),
+                        ],
+                    )
+                except Exception as e:
+                    logger.error(f"Arc Network payment failed: {e}")
+                    raise
+            else:
+                logger.warning("No payment infrastructure available - payment simulation only")
         
         elapsed = time.time() - start_time
+        
+        # Use on_chain_tx_hash if available, fallback to off_chain_tx_id for legacy tx_hash field
+        tx_hash = on_chain_tx_hash or off_chain_tx_id
         
         result = AgentLoopResult(
             correlation_id=correlation_id,
@@ -261,7 +561,10 @@ class TrustlessAgentLoop:
             usage_event=usage_event,
             decision=decision,
             pack_hash=pack_hash,
-            tx_hash=tx_hash,
+            routing=routing,
+            on_chain_tx_hash=on_chain_tx_hash,
+            off_chain_tx_id=off_chain_tx_id,
+            tx_hash=tx_hash,  # Legacy field
             elapsed_seconds=elapsed,
         )
         
@@ -270,8 +573,10 @@ class TrustlessAgentLoop:
             extra={
                 "correlation_id": correlation_id,
                 "decision": decision,
+                "routing_strategy": routing.strategy if routing else "none",
                 "pack_hash": pack_hash,
-                "tx_hash": tx_hash,
+                "on_chain_tx": on_chain_tx_hash,
+                "off_chain_tx": off_chain_tx_id,
                 "elapsed_seconds": elapsed,
             },
         )

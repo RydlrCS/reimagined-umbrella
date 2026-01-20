@@ -8,6 +8,7 @@ Handles motion pack minting, NPC spawning, and usage tracking.
 import os
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+from pydantic import BaseModel, Field
 from web3 import Web3
 from web3.contract import Contract
 from eth_account import Account
@@ -17,6 +18,15 @@ from ..utils.logging import get_logger
 from ..utils.errors import E_DEP_ARC, E_CFG_MISSING
 
 logger = get_logger(__name__)
+
+
+class ArcNetworkConfig(BaseModel):
+    """Configuration for Arc Network service."""
+    rpc_url: str
+    contract_address: str = Field(pattern=r"^0x[a-fA-F0-9]{40}$")
+    private_key: str = Field(pattern=r"^0x[a-fA-F0-9]{64}$")
+    chain_id: int = 52085143  # Arc testnet
+    gas_price_gwei: Optional[float] = None
 
 
 class ArcNetworkService:
@@ -108,6 +118,7 @@ class ArcNetworkService:
     
     def __init__(
         self,
+        config: Optional[ArcNetworkConfig] = None,
         rpc_url: Optional[str] = None,
         private_key: Optional[str] = None,
         contract_address: Optional[str] = None
@@ -116,22 +127,31 @@ class ArcNetworkService:
         Initialize Arc Network service.
         
         Args:
+            config: ArcNetworkConfig instance (preferred)
             rpc_url: Arc RPC endpoint (defaults to env var ARC_TESTNET_RPC_URL)
             private_key: Wallet private key (defaults to env var PRIVATE_KEY)
             contract_address: NPCMotionRegistry address (defaults to env var)
         """
-        self.rpc_url = rpc_url or os.getenv("ARC_TESTNET_RPC_URL")
-        self.private_key = private_key or os.getenv("PRIVATE_KEY")
-        self.contract_address = contract_address or os.getenv("NPC_MOTION_REGISTRY_ADDRESS")
+        # Use config if provided, otherwise fall back to legacy params
+        if config:
+            self.rpc_url = config.rpc_url
+            self.private_key = config.private_key
+            self.contract_address = config.contract_address
+            self.chain_id = config.chain_id
+        else:
+            self.rpc_url = rpc_url or os.getenv("ARC_TESTNET_RPC_URL")
+            self.private_key = private_key or os.getenv("PRIVATE_KEY")
+            self.contract_address = contract_address or os.getenv("NPC_MOTION_REGISTRY_ADDRESS")
+            self.chain_id = 52085143  # Arc testnet default
         
         if not self.rpc_url:
-            raise E_CFG_MISSING("ARC_TESTNET_RPC_URL not configured")
+            raise ValueError("ARC_TESTNET_RPC_URL not configured")
         
         # Initialize Web3
         self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
         
         if not self.w3.is_connected():
-            raise E_DEP_ARC(f"Failed to connect to Arc at {self.rpc_url}")
+            raise ValueError(f"Failed to connect to Arc at {self.rpc_url}")
         
         logger.info(f"Connected to Arc Network: {self.rpc_url}")
         logger.info(f"Chain ID: {self.w3.eth.chain_id}")

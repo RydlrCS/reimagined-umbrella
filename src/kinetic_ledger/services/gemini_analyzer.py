@@ -44,24 +44,57 @@ class GeminiClient:
     Gemini API client wrapper with retries and error handling.
     
     Uses Google Gemini SDK for real multimodal analysis.
+    NEW: Supports Nano Banana (gemini-2.0-flash-thinking-exp) reasoning mode.
     """
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "gemini-2.0-flash-exp"):
+    def __init__(
+        self, 
+        api_key: Optional[str] = None, 
+        model: str = "gemini-2.0-flash-exp",
+        enable_reasoning: bool = True
+    ):
         self.api_key = api_key
         self.model = model
+        self.enable_reasoning = enable_reasoning
         self.provider = "google"
         self._client = None
         
+        # Use Nano Banana thinking model when reasoning enabled
+        if enable_reasoning and "thinking" not in model:
+            self.model = "gemini-2.0-flash-thinking-exp"
+        
         if api_key:
             self._client = genai.Client(api_key=api_key)
-            logger.info(f"Gemini client configured with model: {model}")
+            logger.info(f"Gemini client configured with model: {self.model} (reasoning={enable_reasoning})")
+    
+    def _extract_thinking_blocks(self, response_text: str) -> Dict[str, Any]:
+        """
+        Extract <thinking> blocks from Nano Banana response.
+        
+        Returns:
+            dict with 'reasoning' and 'output' keys
+        """
+        import re
+        
+        # Pattern to match <thinking>...</thinking> blocks
+        thinking_pattern = r'<thinking>(.*?)</thinking>'
+        thinking_blocks = re.findall(thinking_pattern, response_text, re.DOTALL)
+        
+        # Remove thinking blocks to get clean output
+        clean_output = re.sub(thinking_pattern, '', response_text, flags=re.DOTALL).strip()
+        
+        return {
+            "reasoning": thinking_blocks,
+            "reasoning_text": "\n\n".join(thinking_blocks) if thinking_blocks else None,
+            "output": clean_output
+        }
     
     def _build_analysis_prompt(
         self,
         segments: Optional[List[Dict[str, Any]]] = None,
         npc_context: Optional[Dict[str, Any]] = None,
     ) -> str:
-        """Build structured prompt for motion analysis."""
+        """Build structured prompt for motion analysis with optional reasoning guidance."""
         
         segment_info = ""
         if segments:
@@ -73,8 +106,22 @@ class GeminiClient:
         if npc_context:
             npc_info = f"\n\nNPC Context:\n- Game: {npc_context.get('game', 'N/A')}\n- Intent: {', '.join(npc_context.get('intent', []))}\n- Environment: {npc_context.get('environment', 'N/A')}"
         
+        # Enhanced prompt for Nano Banana reasoning
+        reasoning_guidance = ""
+        if self.enable_reasoning:
+            reasoning_guidance = """
+Think through this step-by-step:
+1. Identify the key motion styles present in each segment
+2. Analyze how these styles transition and where the blend occurs
+3. Determine what character traits would be suitable for an NPC using this blend
+4. Check for any safety or content policy concerns
+
+After your analysis, provide the final structured response.
+"""
+        
         prompt = f"""Analyze this motion capture animation blend for NPC character generation.
 {segment_info}{npc_info}
+{reasoning_guidance}
 
 Provide a structured analysis in JSON format with these fields:
 {{
@@ -106,6 +153,8 @@ Respond ONLY with valid JSON, no additional text."""
         """
         Analyze motion preview with Gemini multimodal API.
         
+        NEW: Extracts reasoning from Nano Banana thinking model.
+        
         Args:
             preview_uri: URI to preview video/keyframes
             metadata: Additional metadata context
@@ -113,7 +162,7 @@ Respond ONLY with valid JSON, no additional text."""
             npc_context: NPC context information
         
         Returns:
-            Analysis results
+            Analysis results with optional reasoning field
         """
         logger.info(f"Analyzing motion preview: {preview_uri}")
         
@@ -127,14 +176,24 @@ Respond ONLY with valid JSON, no additional text."""
             prompt = self._build_analysis_prompt(segments, npc_context)
             
             # Call Gemini API with new SDK
-            logger.info("Calling Gemini API for motion analysis")
+            logger.info(f"Calling Gemini API ({self.model}) for motion analysis")
             response = self._client.models.generate_content(
                 model=self.model,
                 contents=prompt,
             )
             
-            # Parse JSON response
+            # Parse response text
             response_text = response.text.strip()
+            
+            # Extract reasoning blocks if using Nano Banana
+            reasoning_data = None
+            if self.enable_reasoning:
+                thinking_result = self._extract_thinking_blocks(response_text)
+                reasoning_data = thinking_result.get("reasoning_text")
+                response_text = thinking_result.get("output", response_text)
+                
+                if reasoning_data:
+                    logger.info(f"Extracted reasoning ({len(reasoning_data)} chars)")
             
             # Extract JSON from markdown code blocks if present
             if "```json" in response_text:
@@ -143,6 +202,10 @@ Respond ONLY with valid JSON, no additional text."""
                 response_text = response_text.split("```")[1].split("```")[0].strip()
             
             result = json.loads(response_text)
+            
+            # Add reasoning to result if available
+            if reasoning_data:
+                result["reasoning"] = reasoning_data
             
             # Validate and sanitize response
             result["style_labels"] = result.get("style_labels", [])[:5]

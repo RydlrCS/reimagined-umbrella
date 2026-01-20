@@ -1,0 +1,37 @@
+{
+  "created_at": "2026-01-14T14:00:00",
+  "source": "Michelle FBX Collection",
+  "total_motions": 3,
+  "motions": [
+    {
+      "id": "salsa_dancing",
+      "name": "Salsa Dancing",
+      "filename": "Salsa Dancing Twirl And Clap.fbx",
+      "icon": "💃",
+      "frames": 120,
+      "fps": 30,
+      "local_path": "/static/models/data/mixamo_anims/fbx/michele/michelle.fbx/Salsa Dancing Twirl And Clap.fbx",
+      "use_gemini": false
+    },
+    {
+      "id": "swing_dancing",
+      "name": "Swing Dancing",
+      "filename": "Swing Dance Charleston _Crazy Legs_.fbx",
+      "icon": "🕺",
+      "frames": 100,
+      "fps": 30,
+      "local_path": "/static/models/data/mixamo_anims/fbx/michele/michelle.fbx/Swing Dance Charleston _Crazy Legs_.fbx",
+      "use_gemini": false
+    },
+    {
+      "id": "wave_hip_hop",
+      "name": "Wave Hip Hop Dance",
+      "filename": "Wave Hip Hop Dance Variation One.fbx",
+      "icon": "🎵",
+      "frames": 110,
+      "fps": 30,
+      "local_path": "/static/models/data/mixamo_anims/fbx/michele/michelle.fbx/Wave Hip Hop Dance Variation One.fbx",
+      "use_gemini": false
+    }
+  ]
+}

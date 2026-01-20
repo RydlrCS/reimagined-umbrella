@@ -42,6 +42,11 @@ class CircleError(DependencyError):
     code = "E_DEP_CIRCLE"
 
 
+class ArcError(DependencyError):
+    """Arc Network error."""
+    code = "E_DEP_ARC"
+
+
 class RpcError(DependencyError):
     """RPC endpoint error."""
     code = "E_DEP_RPC"
@@ -124,3 +129,11 @@ class NoveltyRejectionError(DecisionError):
 class ManualReviewRequiredError(DecisionError):
     """Manual review required."""
     code = "E_DECISION_REVIEW_REQUIRED"
+
+
+# Error code constants for direct import
+E_CFG_MISSING = "E_CFG_MISSING"
+E_DEP_ARC = "E_DEP_ARC"
+E_DEP_GEMINI = "E_DEP_GEMINI"
+E_DEP_CIRCLE = "E_DEP_CIRCLE"
+E_DEP_RPC = "E_DEP_RPC"

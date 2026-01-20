@@ -1,0 +1,78 @@
+{
+  "blend_id": "blend-f2c64e6141dc",
+  "created_at": "1768484222.0485504",
+  "motions": [
+    {
+      "path": "data/mixamo_anims/fbx/michele/michelle.fbx/Salsa Dancing Twirl And Clap.fbx",
+      "name": "Salsa Dancing Twirl And Clap",
+      "total_frames": 60,
+      "duration_seconds": 2.0,
+      "fps": 30
+    },
+    {
+      "path": "data/mixamo_anims/fbx/michele/michelle.fbx/Swing Dance Charleston _Crazy Legs_.fbx",
+      "name": "Swing Dance Charleston _Crazy Legs_",
+      "total_frames": 60,
+      "duration_seconds": 2.0,
+      "fps": 30
+    },
+    {
+      "path": "data/mixamo_anims/fbx/michele/michelle.fbx/Wave Hip Hop Dance Variation One.fbx",
+      "name": "Wave Hip Hop Dance Variation One",
+      "total_frames": 160,
+      "duration_seconds": 5.333333333333333,
+      "fps": 30
+    }
+  ],
+  "segments": [
+    {
+      "motion_index": 0,
+      "weight": 0.43,
+      "crosshatch_offset": 0.7710651828298887,
+      "start_frame": 26,
+      "end_frame": 51,
+      "frame_count": 25,
+      "artifact_start_index": 0,
+      "artifact_end_index": 24,
+      "motion_name": "Salsa Dancing Twirl And Clap",
+      "duration_seconds": 0.8333333333333334
+    },
+    {
+      "motion_index": 1,
+      "weight": 0.43,
+      "crosshatch_offset": 0.7901430842607313,
+      "start_frame": 27,
+      "end_frame": 52,
+      "frame_count": 25,
+      "artifact_start_index": 55,
+      "artifact_end_index": 79,
+      "motion_name": "Swing Dance Charleston _Crazy Legs_",
+      "duration_seconds": 0.8333333333333334
+    },
+    {
+      "motion_index": 2,
+      "weight": 0.14,
+      "crosshatch_offset": 0.22780748663101605,
+      "start_frame": 31,
+      "end_frame": 53,
+      "frame_count": 22,
+      "artifact_start_index": 110,
+      "artifact_end_index": 131,
+      "motion_name": "Wave Hip Hop Dance Variation One",
+      "duration_seconds": 0.7333333333333333
+    }
+  ],
+  "transition_frames": 30,
+  "blend_mode": "smoothstep",
+  "total_artifacts": 132,
+  "aggregate_metrics": {
+    "coverage": 0.30097087378640774,
+    "local_diversity": 0.05681705814609943,
+    "global_diversity": 0.6781074313438272,
+    "l2_velocity": 0.014818069479520145,
+    "l2_acceleration": 0.014345125047519941,
+    "blend_area_smoothness": 0.9716631971662743,
+    "quality_tier": "low",
+    "per_joint_metrics": null
+  }
+}
