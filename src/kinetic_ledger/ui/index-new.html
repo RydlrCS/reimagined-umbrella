@@ -316,14 +316,48 @@
         
         .trim-range-input::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             background: #FF6700;
-            cursor: pointer;
+            cursor: grab;
             pointer-events: auto;
-            border: 2px solid #fff;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            border: 3px solid #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+            transition: all 0.15s ease;
+        }
+        
+        .trim-range-input::-webkit-slider-thumb:hover {
+            background: #FF8C42;
+            transform: scale(1.15);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+        }
+        
+        .trim-range-input::-webkit-slider-thumb:active {
+            cursor: grabbing;
+            transform: scale(1.05);
+        }
+        
+        .trim-range-input::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #FF6700;
+            cursor: grab;
+            pointer-events: auto;
+            border: 3px solid #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+            transition: all 0.15s ease;
+        }
+        
+        .trim-range-input::-moz-range-thumb:hover {
+            background: #FF8C42;
+            transform: scale(1.15);
+        }
+        
+        .trim-range-input::-moz-range-thumb:active {
+            cursor: grabbing;
+            transform: scale(1.05);
         }
         
         .trim-range-track {
@@ -4907,6 +4941,48 @@
                                     playPauseBtn.textContent = '⏸';
                                     
                                     console.log('   Animation duration:', animationDuration, 'seconds');
+                                    
+                                    // Calculate actual frame count from duration
+                                    const actualFrames = Math.floor(animationDuration * 30); // 30 fps standard
+                                    
+                                    // Update motion object with actual frame count
+                                    motion.frames = actualFrames;
+                                    
+                                    // Update trim sliders with actual frame count
+                                    const trimStart = document.getElementById(`trim-start-${motion.id}`);
+                                    const trimEnd = document.getElementById(`trim-end-${motion.id}`);
+                                    const trimRange = document.getElementById(`trim-range-${motion.id}`);
+                                    const trimFrameCount = document.querySelector(`#motion-details-${motion.id}`).closest('.motion-card').querySelector('.trim-frame-count');
+                                    const motionDetails = document.getElementById(`motion-details-${motion.id}`);
+                                    
+                                    if (trimStart && trimEnd) {
+                                        trimStart.max = actualFrames - 1;
+                                        trimEnd.max = actualFrames - 1;
+                                        trimEnd.value = actualFrames - 1;
+                                        motion.trimEnd = actualFrames - 1;
+                                        
+                                        if (trimRange) {
+                                            trimRange.textContent = `0 - ${actualFrames - 1}`;
+                                        }
+                                        if (trimFrameCount) {
+                                            trimFrameCount.textContent = `(${actualFrames} frames)`;
+                                        }
+                                        console.log(`✅ Updated trim sliders to ${actualFrames} frames (from actual animation)`);
+                                    }
+                                    
+                                    // Update motion details display
+                                    if (motionDetails) {
+                                        motionDetails.textContent = `${actualFrames} frames • 30 fps`;
+                                    }
+                                    
+                                    // Store current motion for viewport trim updates
+                                    window.currentMotionViewer = {
+                                        motion: motion,
+                                        character: character,
+                                        mixer: currentMixer,
+                                        action: currentAction
+                                    };
+                                    
                                     console.log('   Playing animation on character');
                                     
                                     // Update timeline
