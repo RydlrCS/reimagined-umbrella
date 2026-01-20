@@ -1009,6 +1009,90 @@
             border-top: 2px solid #e0e0e0;
         }
         
+        /* Blend Metrics Card */
+        #blend-metrics-card {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 320px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+            display: none;
+        }
+        
+        #blend-metrics-card.visible {
+            display: block;
+        }
+        
+        #blend-metrics-card h3 {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        #blend-metrics-card h3::before {
+            content: '📊';
+            font-size: 18px;
+        }
+        
+        .metrics-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .metrics-row:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            font-size: 13px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .metric-value.highlight {
+            color: #FF6700;
+        }
+        
+        .metric-value.good {
+            color: #4CAF50;
+        }
+        
+        .metric-value.warning {
+            color: #FF9800;
+        }
+        
+        .compatibility-bar {
+            width: 100%;
+            height: 6px;
+            background: #f0f0f0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        
+        .compatibility-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #FF6700, #FF8C42);
+            transition: width 0.3s ease;
+        }
+        
         .blend-weights-section h3 {
             margin: 0 0 12px 0;
             font-size: 14px;
@@ -1832,6 +1916,34 @@
                 
                 <button class="blend-action-btn primary" id="compute-blend-btn" disabled>Compute Blend</button>
                 <div class="blend-status-indicator">Ready to select motions</div>
+            </div>
+
+            <!-- Blend Metrics Card (Bottom Left) -->
+            <div id="blend-metrics-card">
+                <h3>Blend Metrics</h3>
+                <div class="metrics-row">
+                    <span class="metric-label">Total Frames</span>
+                    <span class="metric-value" id="metric-total-frames">—</span>
+                </div>
+                <div class="metrics-row">
+                    <span class="metric-label">Motion Sequences</span>
+                    <span class="metric-value" id="metric-sequences">—</span>
+                </div>
+                <div class="metrics-row">
+                    <span class="metric-label">Duration</span>
+                    <span class="metric-value" id="metric-duration">—</span>
+                </div>
+                <div class="metrics-row">
+                    <span class="metric-label">Compatibility</span>
+                    <span class="metric-value good" id="metric-compatibility">—</span>
+                </div>
+                <div class="compatibility-bar">
+                    <div class="compatibility-fill" id="compatibility-fill" style="width: 0%"></div>
+                </div>
+                <div class="metrics-row">
+                    <span class="metric-label">Blend Quality</span>
+                    <span class="metric-value highlight" id="metric-quality">—</span>
+                </div>
             </div>
 
             <!-- Animation Strips (Horizontal Timeline) -->
@@ -3284,6 +3396,7 @@
                 
                 const statusIndicator = document.querySelector('.blend-status-indicator');
                 const proceedBtn = document.getElementById('proceed-to-blend-btn');
+                const metricsCard = document.getElementById('blend-metrics-card');
                 
                 // Collect trimmed motion data
                 const trimmedMotions = [];
@@ -3329,8 +3442,33 @@
                         await generateTrimmedBlendStrip(trimmedMotion);
                     }
                     
+                    // Calculate blend metrics
+                    const metrics = calculateBlendMetrics(trimmedMotions);
+                    console.log('📊 Blend Metrics:', metrics);
+                    
+                    // Display metrics in the metrics card
+                    document.getElementById('metric-total-frames').textContent = metrics.totalFrames;
+                    document.getElementById('metric-sequences').textContent = `${metrics.sequenceCount} motions`;
+                    document.getElementById('metric-duration').textContent = `${metrics.duration.toFixed(2)}s`;
+                    document.getElementById('metric-compatibility').textContent = `${metrics.compatibility}%`;
+                    document.getElementById('compatibility-fill').style.width = `${metrics.compatibility}%`;
+                    document.getElementById('metric-quality').textContent = metrics.qualityTier;
+                    
+                    // Show metrics card with animation
+                    metricsCard.classList.add('visible');
+                    
+                    // Update compatibility color based on score
+                    const compatEl = document.getElementById('metric-compatibility');
+                    if (metrics.compatibility >= 80) {
+                        compatEl.className = 'metric-value good';
+                    } else if (metrics.compatibility >= 60) {
+                        compatEl.className = 'metric-value warning';
+                    } else {
+                        compatEl.className = 'metric-value';
+                    }
+                    
                     // Update status
-                    statusIndicator.textContent = `Ready to blend ${trimmedMotions.length} trimmed motions`;
+                    statusIndicator.textContent = `✓ Ready to blend ${trimmedMotions.length} trimmed motions`;
                     statusIndicator.style.background = '#d4edda';
                     statusIndicator.style.color = '#155724';
                     
@@ -3342,6 +3480,7 @@
                     statusIndicator.textContent = `Error: ${error.message}`;
                     statusIndicator.style.background = '#f8d7da';
                     statusIndicator.style.color = '#721c24';
+                    metricsCard.classList.remove('visible');
                 } finally {
                     // Reset button
                     proceedBtn.disabled = false;
@@ -4084,6 +4223,47 @@
                         container.innerHTML = '<div style="padding: 20px; color: #f44336;">Failed to load character</div>';
                     }
                 );
+            }
+            
+            /**
+             * Calculate blend metrics from trimmed motions
+             */
+            function calculateBlendMetrics(trimmedMotions) {
+                // Calculate total frames (max of all sequences)
+                const totalFrames = Math.max(...trimmedMotions.map(m => m.trimmedFrameCount));
+                
+                // Calculate total duration at 30fps
+                const duration = totalFrames / 30;
+                
+                // Calculate compatibility score based on frame count similarity
+                const frameCounts = trimmedMotions.map(m => m.trimmedFrameCount);
+                const avgFrames = frameCounts.reduce((a, b) => a + b, 0) / frameCounts.length;
+                const variance = frameCounts.reduce((sum, count) => sum + Math.pow(count - avgFrames, 2), 0) / frameCounts.length;
+                const stdDev = Math.sqrt(variance);
+                
+                // Compatibility: 100% if all same length, decreases with variance
+                const maxStdDev = avgFrames * 0.5; // 50% variance = 0% compatibility
+                const compatibility = Math.max(0, Math.min(100, 100 - (stdDev / maxStdDev * 100)));
+                
+                // Determine quality tier based on compatibility and motion count
+                let qualityTier = 'Standard';
+                if (compatibility >= 80 && trimmedMotions.length >= 3) {
+                    qualityTier = 'Premium';
+                } else if (compatibility >= 60) {
+                    qualityTier = 'Good';
+                } else if (compatibility < 40) {
+                    qualityTier = 'Experimental';
+                }
+                
+                return {
+                    totalFrames,
+                    sequenceCount: trimmedMotions.length,
+                    duration,
+                    compatibility: Math.round(compatibility),
+                    qualityTier,
+                    frameCounts,
+                    avgFrames: Math.round(avgFrames)
+                };
             }
             
             // Generate trimmed blend strip thumbnails
