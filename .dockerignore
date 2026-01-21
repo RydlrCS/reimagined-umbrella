@@ -1,0 +1,55 @@
+# Ignore Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Ignore virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Ignore IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Ignore git
+.git/
+.gitignore
+.gitmodules
+
+# Ignore test files
+tests/
+*.test.py
+pytest.ini
+.pytest_cache/
+.mypy_cache/
+
+# Ignore docs
+docs/
+*.md
+!README.md
+
+# Ignore unnecessary files
+*.png
+*.pdf
+*.log
+logs/
+
+# Ignore local config
+.env
+.env.*
+*.example
+
+# Ignore build artifacts
+*.egg-info/
+dist/
+build/
+
+# Ignore large model files that should be in cloud storage
+# Uncomment if you want to exclude FBX files from container
+# *.fbx
+# data/mixamo_anims/
