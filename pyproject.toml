@@ -21,6 +21,7 @@ dependencies = [
     "eth-account>=0.10.0",
     "qdrant-client>=1.7.0",
     "web3>=6.0.0",
+    "google-cloud-storage>=2.14.0",  # GCS for Cloud Run data storage
 ]
 
 [project.optional-dependencies]

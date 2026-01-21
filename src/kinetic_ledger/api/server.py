@@ -57,6 +57,33 @@ app.add_middleware(
 )
 
 
+# GCS integration for Cloud Run
+def sync_data_from_gcs():
+    """Sync data and config from GCS bucket on startup (for Cloud Run)."""
+    if os.getenv("K_SERVICE"):  # Running in Cloud Run
+        try:
+            from ..services.gcs_storage import sync_directory_from_gcs
+            logger.info("Running in Cloud Run, syncing data from GCS...")
+            
+            # Sync data directory (mixamo animations, etc.)
+            sync_directory_from_gcs("data/", "/app/data")
+            
+            # Sync config directory
+            sync_directory_from_gcs("config/", "/app/config")
+            
+            logger.info("GCS data sync complete")
+        except Exception as e:
+            logger.warning(f"Failed to sync data from GCS: {e}")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on startup."""
+    logger.info("Starting Kinetic Ledger API...")
+    sync_data_from_gcs()
+    logger.info("Kinetic Ledger API started")
+
+
 # Global agent loop instance (in production: use dependency injection)
 agent_loop: Optional[TrustlessAgentLoop] = None
 
