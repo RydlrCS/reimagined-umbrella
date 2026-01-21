@@ -13,6 +13,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libffi-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency files
@@ -25,15 +26,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy application code
 COPY src/ ./src/
-COPY data/ ./data/
 COPY config/ ./config/
-COPY artifacts/ ./artifacts/
 
-# Copy static assets
-COPY Ch03_nonPBR.fbx ./
-
-# Create necessary directories
-RUN mkdir -p /app/logs /app/artifacts
+# Create necessary directories (data and artifacts are mounted at runtime or created dynamically)
+RUN mkdir -p /app/logs /app/artifacts /app/data
 
 # Expose port
 EXPOSE 8080
