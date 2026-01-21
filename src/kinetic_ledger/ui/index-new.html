@@ -683,31 +683,55 @@
         }
         
         /* Artifacts Tab New Layout */
-        #artifacts-animation-card {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 280px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            overflow: hidden;
-            z-index: 200;
+        .artifacts-marketplace {
+            width: 100%;
+            height: 100%;
+            padding: 40px;
+            overflow-y: auto;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         }
         
-        .artifacts-card-header {
-            padding: 16px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+        .marketplace-header {
+            text-align: center;
+            margin-bottom: 40px;
         }
         
-        .artifacts-card-header h3 {
+        .marketplace-header h2 {
+            margin: 0 0 8px 0;
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .marketplace-subtitle {
             margin: 0;
             font-size: 16px;
-            font-weight: 600;
+            color: #666;
         }
         
-        .artifacts-card-thumbnail {
+        .artifact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .artifact-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .artifact-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+        
+        .artifact-thumbnail {
             width: 100%;
             height: 200px;
             background: #f5f5f5;
@@ -715,39 +739,244 @@
             align-items: center;
             justify-content: center;
             position: relative;
-            cursor: pointer;  /* Clickable to play */
-            transition: transform 0.2s;
+            overflow: hidden;
         }
         
-        .artifacts-card-thumbnail:hover {
-            transform: scale(1.02);
+        .artifact-thumbnail canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
         
-        .thumbnail-placeholder {
+        .artifact-token-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: linear-gradient(135deg, #FF6700, #FF8C42);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .artifact-info {
+            padding: 20px;
+        }
+        
+        .artifact-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin: 0 0 12px 0;
+        }
+        
+        .artifact-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .artifact-price {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 12px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .price-tag {
+            font-size: 20px;
+            font-weight: 700;
+            color: #FF6700;
+        }
+        
+        .buy-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .buy-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .artifact-placeholder {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 80px 20px;
+            background: white;
+            border-radius: 12px;
+            border: 2px dashed #ddd;
+        }
+        
+        .placeholder-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        
+        .artifact-placeholder p {
+            font-size: 16px;
+            color: #666;
+            margin: 8px 0;
+        }
+        
+        .artifact-placeholder small {
+            color: #999;
+            font-size: 13px;
+        }
+        
+        /* Purchase Modal */
+        .purchase-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 10000;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         
-        .artifacts-card-info {
-            padding: 16px;
-            background: white;
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
         }
         
-        .info-row {
+        .modal-content {
+            position: relative;
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            z-index: 10001;
+        }
+        
+        .modal-header {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #f0f0f0;
+            align-items: center;
+            padding: 24px;
+            border-bottom: 1px solid #e0e0e0;
         }
         
-        .info-row:last-child {
-            border-bottom: none;
+        .modal-header h3 {
+            margin: 0;
+            font-size: 20px;
+            color: #333;
         }
         
-        .info-row .label {
-            font-size: 13px;
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 32px;
+            color: #999;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+        }
+        
+        .modal-close:hover {
+            color: #333;
+        }
+        
+        .modal-body {
+            padding: 24px;
+        }
+        
+        .payment-section {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 2px solid #f0f0f0;
+        }
+        
+        .payment-section h4 {
+            margin: 0 0 16px 0;
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .price-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .price-label {
+            font-size: 14px;
             color: #666;
+        }
+        
+        .price-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #FF6700;
+        }
+        
+        .wallet-info input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+        
+        .wallet-info input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .purchase-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        
+        .purchase-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .purchase-btn:active {
+            transform: translateY(0);
+        }
             font-weight: 500;
         }
         
@@ -1046,15 +1275,16 @@
         /* Blend Metrics Card */
         #blend-metrics-card {
             position: absolute;
-            bottom: 20px;
+            top: 373px;
             left: 20px;
-            width: 320px;
-            background: white;
-            border: 2px solid #e0e0e0;
+            width: 280px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid rgba(224, 224, 224, 0.8);
             border-radius: 8px;
             padding: 16px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            z-index: 10;
+            backdrop-filter: blur(10px);
+            z-index: 1000;
             display: none;
         }
         
@@ -1252,7 +1482,7 @@
             display: flex;
             flex-direction: column;
             gap: 0;
-            overflow: hidden;
+            overflow: visible;
         }
         
         .animation-strip {
@@ -1464,6 +1694,11 @@
             border: 2px dotted #CCCCCC !important;
             background: #FAFAFA !important;
             padding: 5px !important;
+            flex: 1;
+            margin-left: -300px;
+            margin-right: -20px;
+            width: calc(100% + 320px) !important;
+            z-index: 10 !important;
         }
         
         .strip-badge.blend {
@@ -1842,7 +2077,7 @@
             <button class="tab active" data-tab="characters">Characters</button>
             <button class="tab" data-tab="animations">Animations</button>
             <button class="tab" data-tab="blend">Blend</button>
-            <button class="tab" data-tab="artifacts">Artifacts</button>
+            <button class="tab" data-tab="artifacts">Wallet</button>
         </div>
     </div>
     
@@ -1922,26 +2157,26 @@
                     <div class="weight-slider-container">
                         <label for="weight-slider-1">
                             <span class="weight-label">Motion 1</span>
-                            <span class="weight-value" id="weight-value-1">50%</span>
+                            <span class="weight-value" id="weight-value-1">100%</span>
                         </label>
                         <input type="range" id="weight-slider-1" class="weight-slider green-slider" 
-                               min="0" max="100" value="50" data-slot="1" />
+                               min="0" max="100" value="100" data-slot="1" />
                     </div>
                     <div class="weight-slider-container">
                         <label for="weight-slider-2">
                             <span class="weight-label">Motion 2</span>
-                            <span class="weight-value" id="weight-value-2">50%</span>
+                            <span class="weight-value" id="weight-value-2">100%</span>
                         </label>
                         <input type="range" id="weight-slider-2" class="weight-slider blue-slider" 
-                               min="0" max="100" value="50" data-slot="2" />
+                               min="0" max="100" value="100" data-slot="2" />
                     </div>
                     <div class="weight-slider-container" id="weight-container-3" style="display: none;">
                         <label for="weight-slider-3">
                             <span class="weight-label">Motion 3</span>
-                            <span class="weight-value" id="weight-value-3">0%</span>
+                            <span class="weight-value" id="weight-value-3">100%</span>
                         </label>
                         <input type="range" id="weight-slider-3" class="weight-slider orange-slider" 
-                               min="0" max="100" value="0" data-slot="3" />
+                               min="0" max="100" value="100" data-slot="3" />
                     </div>
                     <div class="weight-normalize-info">
                         <small>Weights auto-normalize to 100%</small>
@@ -2057,98 +2292,69 @@
             </div>
         </div>
 
-        <!-- Artifacts Tab Content -->
+        <!-- Wallet Tab Content (Marketplace) -->
         <div id="artifacts-tab" class="tab-content">
-            <!-- Animation Card (Top Left) -->
-            <div id="artifacts-animation-card">
-                <div class="artifacts-card-header">
-                    <h3>Blend Artifact</h3>
+            <!-- Tokenized Blend Artifacts Marketplace -->
+            <div class="artifacts-marketplace">
+                <div class="marketplace-header">
+                    <h2>🪙 Blend Artifact Marketplace</h2>
+                    <p class="marketplace-subtitle">Tokenize your blends on Arc testnet · Buy with USDC</p>
                 </div>
-                <div class="artifacts-card-thumbnail" id="artifacts-thumbnail">
-                    <!-- Character thumbnail will be rendered here -->
-                    <div class="thumbnail-placeholder">
-                        <svg width="80" height="80" viewBox="0 0 24 24" fill="#999">
-                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-                        </svg>
-                    </div>
-                </div>
-                <div class="artifacts-card-info">
-                    <div class="info-row">
-                        <span class="label">Frames:</span>
-                        <span class="value" id="artifacts-frame-count">--</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">FPS:</span>
-                        <span class="value">30</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">Quality:</span>
-                        <span class="value quality-badge" id="artifacts-quality">--</span>
-                    </div>
-                    <div id="gemini-insights-section" style="display:none; margin-top:10px; border-top: 1px solid #e0e0e0; padding-top: 10px;">
-                        <div style="font-size: 11px; font-weight: 600; color: #1a73e8; margin-bottom: 8px;">
-                            ✨ Gemini Analysis
-                        </div>
-                        <div class="info-row">
-                            <span class="label">Compatibility:</span>
-                            <span class="value" id="gemini-compatibility">--</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="label">Motion Types:</span>
-                            <span class="value" id="gemini-motion-types" style="font-size: 10px;">--</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="label">Predicted Quality:</span>
-                            <span class="value" id="gemini-predicted-quality">--</span>
-                        </div>
-                        <div style="font-size: 9px; color: #666; margin-top: 6px; line-height: 1.3;" id="gemini-recommendation">
-                            --
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 3D Viewport (Center) -->
-            <div class="artifacts-viewport">
-                <canvas id="artifacts-canvas"></canvas>
                 
-                <!-- Playback controls -->
-                <div class="playback-controls" id="artifact-playback-controls" style="display: none;">
-                    <button class="play-button" id="artifact-play-pause-btn">▶</button>
-                    <div class="timeline">
-                        <input type="range" id="artifact-timeline-slider" min="0" max="100" value="0" />
-                    </div>
-                    <div class="frame-display" id="artifact-frame-display">Frame 0/0</div>
-                </div>
-            </div>
-            
-            <!-- Blend Artifact Strip (Bottom) - Replaces Reference -->
-            <div class="artifacts-blend-output" id="artifacts-blend-output">
-                <div class="blend-output-header">
-                    <div class="strip-label">Blend Artifact</div>
-                    <div class="blend-output-actions">
-                        <label class="gemini-option">
-                            <input type="checkbox" id="artifacts-use-gemini" />
-                            <span>Use Gemini AI Analysis</span>
-                        </label>
-                        <button class="ai-gen-btn" id="artifacts-generate-btn" disabled title="Generate blend artifacts">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor"/>
-                            </svg>
-                            <span>Generate Artifacts</span>
-                        </button>
+                <!-- Artifact Gallery Grid -->
+                <div class="artifact-grid" id="artifact-grid">
+                    <!-- Artifacts will be dynamically generated here -->
+                    <div class="artifact-placeholder">
+                        <div class="placeholder-icon">🎨</div>
+                        <p><strong>No Blend Artifacts Yet</strong></p>
+                        <p>Create a blend in the Blend tab, then your artifact will appear here!</p>
+                        <small>Blend artifacts are automatically listed here for tokenization and sale.</small>
                     </div>
                 </div>
-                <div class="blend-status-indicator artifacts-status" id="artifacts-status-indicator">
-                    Select 2+ motions in Animations tab to begin
-                </div>
-                <div class="strip-timeline">
-                    <div class="frame-previews" id="artifacts-blend-previews">
-                        <!-- Blended frame thumbnails will be rendered here -->
-                    </div>
-                    <div class="color-shadow artifacts-blend-shadow"></div>
-                    <div class="blend-overlap-viz" id="artifacts-blend-viz">
-                        <!-- Crosshatch overlays will be shown here -->
+                
+                <!-- Purchase Modal (hidden by default) -->
+                <div class="purchase-modal" id="purchase-modal" style="display: none;">
+                    <div class="modal-overlay" onclick="closePurchaseModal()"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>🪙 Tokenize Blend Artifact</h3>
+                            <button class="modal-close" onclick="closePurchaseModal()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="artifact-summary">
+                                <h4 id="modal-artifact-name">Blend Artifact</h4>
+                                <p style="color: #666; font-size: 14px; margin: 8px 0 0 0;">
+                                    This blend will be minted as an NFT on Arc testnet and assigned to your wallet.
+                                </p>
+                            </div>
+                            
+                            <div class="payment-section">
+                                <h4>💳 Payment Details</h4>
+                                <div class="price-display">
+                                    <span class="price-label">Total Price</span>
+                                    <span class="price-value" id="modal-price-value">5 USDC</span>
+                                </div>
+                                
+                                <div class="wallet-info">
+                                    <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 600; color: #333;">
+                                        Your Wallet Address (Arc Testnet)
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        id="wallet-address-input" 
+                                        placeholder="0x..."
+                                        value=""
+                                    />
+                                    <small style="color: #999; font-size: 12px;">
+                                        ⚠️ Make sure you have enough USDC on Arc testnet. <a href="https://faucet.circle.com" target="_blank" style="color: #667eea;">Get test USDC</a>
+                                    </small>
+                                </div>
+                                
+                                <button class="purchase-btn" onclick="processPurchase()">
+                                    <span>💳</span> Complete Purchase
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2592,22 +2798,22 @@
                         </div>
                         <div class="motion-info">
                             <div class="motion-name">${motion.name}</div>
-                            <div class="motion-details" id="motion-details-${motion.id}">${motion.frames} frames • ${motion.fps} fps</div>
+                            <div class="motion-details" id="motion-details-${motion.id}">Loading animation data...</div>
                             <div class="trimming-controls" id="trim-${motion.id}">
                                 <div class="trim-range-container">
                                     <div class="trim-range-label">
                                         <span>Trim Range: </span>
-                                        <span id="trim-range-${motion.id}">0 - ${motion.frames - 1}</span>
-                                        <span class="trim-frame-count">(${motion.frames} frames)</span>
+                                        <span id="trim-range-${motion.id}">--</span>
+                                        <span class="trim-frame-count">(-- frames)</span>
                                     </div>
                                     <div class="trim-range-slider">
-                                        <input type="range" id="trim-start-${motion.id}" class="trim-range-input trim-start" min="0" max="${motion.frames - 1}" value="0" />
-                                        <input type="range" id="trim-end-${motion.id}" class="trim-range-input trim-end" min="0" max="${motion.frames - 1}" value="${motion.frames - 1}" />
+                                        <input type="range" id="trim-start-${motion.id}" class="trim-range-input trim-start" min="0" max="100" value="0" disabled />
+                                        <input type="range" id="trim-end-${motion.id}" class="trim-range-input trim-end" min="0" max="100" value="100" disabled />
                                         <div class="trim-range-track"></div>
                                     </div>
                                 </div>
                                 <div class="trim-info">
-                                    <small>Trimmed: <span id="trimmed-frames-${motion.id}">${motion.frames}</span> frames</small>
+                                    <small>Trimmed: <span id="trimmed-frames-${motion.id}">Click to load</span></small>
                                 </div>
                             </div>
                         </div>
@@ -2618,8 +2824,10 @@
                         </div>
                     `;
                     card.addEventListener('click', (e) => {
-                        // Don't load motion if clicking a flag button
-                        if (!e.target.classList.contains('flag-btn')) {
+                        // Don't load motion if clicking a flag button or trim controls
+                        if (!e.target.classList.contains('flag-btn') && 
+                            !e.target.classList.contains('trim-range-input') &&
+                            !e.target.closest('.trimming-controls')) {
                             loadMotion(motion, card);
                         }
                     });
@@ -2647,9 +2855,7 @@
                     const trimmedFrames = card.querySelector(`#trimmed-frames-${motion.id}`);
                     
                     if (trimStart && trimEnd) {
-                        // Store motion data for viewport updates
-                        motion.trimStart = 0;
-                        motion.trimEnd = motion.frames - 1;
+                        // DON'T initialize motion.trimStart/trimEnd here - wait for actual animation to load
                         
                         const updateTrimRange = () => {
                             const startFrame = parseInt(trimStart.value);
@@ -2661,28 +2867,33 @@
                                 return;
                             }
                             
-                            // Update motion trim data
+                            // Update motion trim data (ONLY store values, no complex updates)
                             motion.trimStart = startFrame;
                             motion.trimEnd = endFrame;
                             
-                            // Update display
+                            // Update ALL display elements with trimmed count
+                            const trimmedCount = endFrame - startFrame + 1;
+                            
+                            // Update trim range display
                             trimRange.textContent = `${startFrame} - ${endFrame}`;
-                            updateTrimmedFrames(startFrame, endFrame, trimmedFrames);
                             
-                            // Update 3D viewport if this motion is currently loaded
-                            updateViewportTrimRange(motion);
+                            // Update frame count badge
+                            const trimFrameCount = card.querySelector('.trim-frame-count');
+                            if (trimFrameCount) {
+                                trimFrameCount.textContent = `(${trimmedCount} frames)`;
+                            }
                             
-                            // Regenerate thumbnail for trimmed range
-                            generateTrimmedThumbnail(motion, startFrame, endFrame);
+                            // Update trimmed frames display
+                            trimmedFrames.textContent = `${trimmedCount} frames selected`;
                         };
                         
-                        // Handle start slider
+                        // Handle start slider - simple value update only
                         trimStart.addEventListener('input', updateTrimRange);
                         
-                        // Handle end slider
+                        // Handle end slider - simple value update only
                         trimEnd.addEventListener('input', updateTrimRange);
                         
-                        // Update track visualization
+                        // Update track visualization (simple visual only, no DOM queries)
                         const updateTrack = () => {
                             const startPercent = (parseInt(trimStart.value) / (motion.frames - 1)) * 100;
                             const endPercent = (parseInt(trimEnd.value) / (motion.frames - 1)) * 100;
@@ -2872,29 +3083,7 @@
                 console.log('✅ Updated flag buttons after swap');
             }
             
-            // Normalize weights to total 100%
-            function normalizeWeights() {
-                const sliders = [1, 2, 3].map(i => document.getElementById(`weight-slider-${i}`));
-                const values = sliders.map(s => parseFloat(s.value) || 0);
-                const total = values.reduce((a, b) => a + b, 0);
-                
-                if (total === 0) return;
-                
-                // Normalize to 100%
-                const normalized = values.map(v => (v / total) * 100);
-                
-                sliders.forEach((slider, i) => {
-                    if (slider && !slider.disabled) {
-                        slider.value = normalized[i].toFixed(0);
-                        const valueDisplay = document.getElementById(`weight-value-${i + 1}`);
-                        if (valueDisplay) {
-                            valueDisplay.textContent = `${normalized[i].toFixed(0)}%`;
-                        }
-                    }
-                });
-            }
-            
-            // Add weight slider listeners for normalization
+            // Update weight display without normalization
             function setupWeightSliders() {
                 for (let slot = 1; slot <= 3; slot++) {
                     const slider = document.getElementById(`weight-slider-${slot}`);
@@ -2903,7 +3092,6 @@
                     if (slider) {
                         slider.addEventListener('input', (e) => {
                             valueDisplay.textContent = `${e.target.value}%`;
-                            normalizeWeights();
                             updateCrosshatchOverlap();
                         });
                     }
@@ -2932,23 +3120,45 @@
                         // Allow full range positioning for blend tab (can adjust start position)
                         newLeft = Math.max(0, Math.min(newLeft, maxLeft));
                         
+                        // Calculate offset (0-1) representing position in the container
+                        const offset = maxLeft > 0 ? newLeft / maxLeft : 0;
+                        
                         // Update blend state for blend tab
                         blendState.crosshatchOffsets[slot] = offset;
 
-                        // Update frame count labels during drag
-                        const totalFrames = blendState.frameCounts[slot] || 0;
-                        const weightSlider = document.getElementById(`weight-slider-${slot}`);
-                        const weight = weightSlider ? parseFloat(weightSlider.value) / 100 : 0;
-                        const framesToBlend = Math.round(totalFrames * weight);
-                        updateFrameCountLabels(slot, crosshatch, totalFrames, framesToBlend, offset);
+                        // Calculate actual frame range based on crosshatch position and width
+                        const motion = blendState.slots[slot]?.motion;
+                        if (motion) {
+                            const totalFrames = blendState.frameCounts[slot] || 0;
+                            const weightSlider = document.getElementById(`weight-slider-${slot}`);
+                            const weight = weightSlider ? parseFloat(weightSlider.value) / 100 : 0;
+                            const framesToBlend = Math.round(totalFrames * weight);
+                            
+                            // Calculate which frames from the source animation will be used
+                            const maxStartFrame = Math.max(0, totalFrames - framesToBlend);
+                            const startFrame = Math.round(maxStartFrame * offset);
+                            const endFrame = startFrame + framesToBlend;
+                            
+                            // Store the frame range in blend state
+                            blendState.frameRanges = blendState.frameRanges || {};
+                            blendState.frameRanges[slot] = { startFrame, endFrame, totalFrames, framesToBlend };
+                            
+                            updateFrameCountLabels(slot, crosshatch, totalFrames, framesToBlend, offset);
 
-                        console.log(`Slot ${slot} crosshatch at ${(offset * 100).toFixed(0)}% (${newLeft.toFixed(0)}px / ${maxLeft.toFixed(0)}px)`);
+                            console.log(`Slot ${slot} crosshatch: frames ${startFrame}-${endFrame} (${framesToBlend} frames from ${totalFrames} total)`);
+                        }
+                        
+                        // Apply the new position
+                        crosshatch.style.left = `${newLeft}px`;
                     } else {
                         // For artifacts tab: keep centered positioning
                         const containerCenter = containerWidth / 2;
                         const crosshatchCenter = crosshatchWidth / 2;
                         const centeredLeft = containerCenter - crosshatchCenter;
                         newLeft = Math.max(0, Math.min(centeredLeft, maxLeft));
+                        
+                        // Calculate offset for artifacts tab
+                        const offset = maxLeft > 0 ? newLeft / maxLeft : 0;
                         
                         // For artifacts tab, update timeline position
                         const artifactsViewer = window.artifactsViewer;
@@ -2965,6 +3175,9 @@
 
                             console.log(`Artifacts crosshatch at ${(offset * 100).toFixed(0)}% (frame ${frameIndex}/${totalFrames})`);
                         }
+                        
+                        // Apply the new position
+                        crosshatch.style.left = `${newLeft}px`;
                     }
                 });
 
@@ -3032,14 +3245,23 @@
                 const selectedCount = Object.values(blendState.slots).filter(s => s !== null).length;
                 if (selectedCount < 2) return;
                 
+                // Initialize frameRanges if needed
+                blendState.frameRanges = blendState.frameRanges || {};
+                
                 // Calculate frame counts for each motion based on weights
                 for (let slot = 1; slot <= 3; slot++) {
                     if (blendState.slots[slot]) {
                         const weightSlider = document.getElementById(`weight-slider-${slot}`);
-                        const weight = weightSlider ? parseFloat(weightSlider.value) / 100 : 0;
+                        const weight = weightSlider ? parseFloat(weightSlider.value) / 100 : 1.0; // Default to 100%
                         
-                        // Use ACTUAL animation frame count, not thumbnail count
-                        const totalFrames = blendState.frameCounts[slot] || 0;
+                        // Get motion and its trim data
+                        const motion = blendState.slots[slot].motion;
+                        const trimStart = motion.trimStart || 0;
+                        const trimEnd = motion.trimEnd || (motion.frames - 1);
+                        const trimmedFrameCount = trimEnd - trimStart + 1;
+                        
+                        // Use trimmed frame count as the base
+                        const totalFrames = trimmedFrameCount;
                         const framesToBlend = Math.round(totalFrames * weight);
                         
                         // Update crosshatch width to represent percentage relative to thumbnails
@@ -3048,7 +3270,7 @@
                         if (crosshatch && crosshatch.classList.contains('color-shadow')) {
                             // Use stored thumbnail count for accurate calculation
                             const totalThumbnails = blendState.thumbnailCounts[slot] || 0;
-                            const thumbnailsToTake = Math.round(totalThumbnails * weight);
+                            const thumbnailsToTake = Math.max(1, Math.round(totalThumbnails * weight));
                             
                             // Crosshatch width = proportion of thumbnails (100% thumbnails = 100% frame count)
                             const containerWidth = frameContainer.offsetWidth;
@@ -3056,7 +3278,6 @@
                             crosshatch.style.width = `${crosshatchWidth}px`;
                             
                             // Position crosshatch centered at the midpoint of its possible range
-                            // The midpoint of the crosshatch should align with the center of the container
                             const containerCenter = containerWidth / 2;
                             const crosshatchCenter = crosshatchWidth / 2;
                             const centeredLeft = containerCenter - crosshatchCenter;
@@ -3071,18 +3292,110 @@
                             const effectiveOffset = maxLeft > 0 ? clampedLeft / maxLeft : 0;
                             blendState.crosshatchOffsets[slot] = effectiveOffset;
                             
-                            console.log(`Slot ${slot}: ${thumbnailsToTake}/${totalThumbnails} thumbnails = ${framesToBlend}/${totalFrames} frames (${(weight*100).toFixed(0)}%)`);
+                            // Calculate and store actual frame range within trimmed data
+                            const maxStartFrame = Math.max(0, totalFrames - framesToBlend);
+                            const startFrame = trimStart + Math.round(maxStartFrame * effectiveOffset);
+                            const endFrame = startFrame + framesToBlend;
+                            
+                            blendState.frameRanges[slot] = { 
+                                startFrame, 
+                                endFrame, 
+                                totalFrames, 
+                                framesToBlend,
+                                trimStart,
+                                trimEnd
+                            };
+                            
+                            // Crosshatch already represents the trim bounds visually
+                            // No need for additional trim markers on blend strips
+                            
+                            console.log(`Slot ${slot}: frames ${startFrame}-${endFrame} (${framesToBlend}/${totalFrames} trimmed, ${(weight*100).toFixed(0)}%)`);
                         }
-                        
-                        // Update slot name to show frame count
-                        const slotNameEl = document.querySelector(`.selected-motion-slot[data-slot="${slot}"] .slot-name`);
-                        if (slotNameEl && blendState.slots[slot]) {
-                            slotNameEl.textContent = `${blendState.slots[slot].motion.name} (${framesToBlend} frames)`;
-                        }
-                        
-                        console.log(`Slot ${slot}: ${framesToBlend}/${totalFrames} frames (${(weight * 100).toFixed(0)}%)`);
                     }
                 }
+            }
+            
+            // Update trim markers on crosshatch overlay
+            function updateTrimMarkers(slot, crosshatch, motion, containerWidth, totalFrames) {
+                // Remove existing trim markers
+                const existingMarkers = crosshatch.querySelectorAll('.trim-marker');
+                existingMarkers.forEach(marker => marker.remove());
+                
+                // Calculate trim positions relative to full animation
+                const trimStart = motion.trimStart || 0;
+                const trimEnd = motion.trimEnd || (motion.frames - 1);
+                
+                // Convert trim positions to pixel positions within container
+                const trimStartPercent = trimStart / totalFrames;
+                const trimEndPercent = (trimEnd + 1) / totalFrames;
+                const trimStartPx = trimStartPercent * containerWidth;
+                const trimEndPx = trimEndPercent * containerWidth;
+                
+                // Create trim start marker
+                const startMarker = document.createElement('div');
+                startMarker.className = 'trim-marker trim-start';
+                startMarker.style.cssText = `
+                    position: absolute;
+                    left: ${trimStartPx}px;
+                    top: 0;
+                    bottom: 0;
+                    width: 2px;
+                    background: rgba(255, 255, 255, 0.8);
+                    box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+                    z-index: 15;
+                    pointer-events: none;
+                `;
+                
+                const startLabel = document.createElement('div');
+                startLabel.style.cssText = `
+                    position: absolute;
+                    left: 4px;
+                    top: 2px;
+                    font-size: 10px;
+                    font-weight: bold;
+                    color: white;
+                    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+                    background: rgba(0, 0, 0, 0.6);
+                    padding: 2px 4px;
+                    border-radius: 2px;
+                `;
+                startLabel.textContent = `${trimStart}`;
+                startMarker.appendChild(startLabel);
+                
+                // Create trim end marker
+                const endMarker = document.createElement('div');
+                endMarker.className = 'trim-marker trim-end';
+                endMarker.style.cssText = `
+                    position: absolute;
+                    left: ${trimEndPx}px;
+                    top: 0;
+                    bottom: 0;
+                    width: 2px;
+                    background: rgba(255, 255, 255, 0.8);
+                    box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+                    z-index: 15;
+                    pointer-events: none;
+                `;
+                
+                const endLabel = document.createElement('div');
+                endLabel.style.cssText = `
+                    position: absolute;
+                    right: 4px;
+                    top: 2px;
+                    font-size: 10px;
+                    font-weight: bold;
+                    color: white;
+                    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+                    background: rgba(0, 0, 0, 0.6);
+                    padding: 2px 4px;
+                    border-radius: 2px;
+                `;
+                endLabel.textContent = `${trimEnd}`;
+                endMarker.appendChild(endLabel);
+                
+                // Append markers to crosshatch
+                crosshatch.appendChild(startMarker);
+                crosshatch.appendChild(endMarker);
             }
             
             // Update frame count labels on crosshatch
@@ -3107,6 +3420,70 @@
                 endLabel.className = 'crosshatch-frame-label end';
                 endLabel.textContent = `${endFrame}`;
                 crosshatch.appendChild(endLabel);
+            }
+            
+            // Capture preferred region thumbnails from crosshatch bounds
+            async function capturePreferredRegionThumbnails(trimmedMotions) {
+                console.log('📸 Capturing preferred region thumbnails...');
+                
+                // Initialize storage if needed
+                blendState.regionThumbnails = blendState.regionThumbnails || {};
+                
+                for (const tm of trimmedMotions) {
+                    const { slot, motion } = tm;
+                    const frameRange = blendState.frameRanges[slot];
+                    
+                    if (!frameRange) {
+                        console.warn(`⚠️ No frame range for slot ${slot}`);
+                        continue;
+                    }
+                    
+                    const frameContainer = document.getElementById(`frame-previews-${slot}`);
+                    if (!frameContainer) {
+                        console.warn(`⚠️ No frame container for slot ${slot}`);
+                        continue;
+                    }
+                    
+                    const thumbnails = Array.from(frameContainer.querySelectorAll('.frame-thumb'));
+                    const totalThumbnails = thumbnails.length;
+                    
+                    if (totalThumbnails === 0) {
+                        console.warn(`⚠️ No thumbnails in slot ${slot}`);
+                        continue;
+                    }
+                    
+                    // Calculate which thumbnails fall within the crosshatch range
+                    const totalFrames = blendState.frameCounts[slot];
+                    const { startFrame, endFrame } = frameRange;
+                    
+                    // Map frame range to thumbnail indices
+                    const startThumbIdx = Math.floor((startFrame / totalFrames) * totalThumbnails);
+                    const endThumbIdx = Math.min(Math.ceil((endFrame / totalFrames) * totalThumbnails), totalThumbnails - 1);
+                    
+                    // Extract thumbnails in the crosshatch region
+                    const regionThumbs = thumbnails.slice(startThumbIdx, endThumbIdx + 1);
+                    
+                    // Convert canvases to data URLs for storage
+                    const thumbnailData = regionThumbs.map((canvas, idx) => {
+                        return {
+                            dataUrl: canvas.toDataURL('image/png'),
+                            frameIndex: startFrame + Math.floor(idx * (endFrame - startFrame) / regionThumbs.length),
+                            thumbIndex: startThumbIdx + idx
+                        };
+                    });
+                    
+                    blendState.regionThumbnails[slot] = {
+                        motion: motion.name,
+                        slot,
+                        frameRange: { startFrame, endFrame },
+                        thumbnails: thumbnailData,
+                        color: slot === 1 ? 'green' : slot === 2 ? 'blue' : 'orange'
+                    };
+                    
+                    console.log(`  ✅ Captured ${thumbnailData.length} thumbnails for slot ${slot} (frames ${startFrame}-${endFrame})`);
+                }
+                
+                console.log('✅ Region thumbnails captured:', Object.keys(blendState.regionThumbnails).length, 'slots');
             }
             
             // Handle flag button click
@@ -3134,8 +3511,34 @@
                     // Activate this flag
                     btn.classList.add('active');
                     blendState.slots[slot] = { motion, btn };
+                    
+                    // Use trimmed frame count if available, otherwise use full frame count
+                    const startFrame = motion.trimStart || 0;
+                    const endFrame = motion.trimEnd || (motion.frames - 1);
+                    const trimmedFrameCount = endFrame - startFrame + 1;
+                    blendState.frameCounts[slot] = trimmedFrameCount;
+                    
+                    console.log(`📊 Slot ${slot} assigned ${trimmedFrameCount} frames (trimmed from ${motion.frames})`);
+                    
                     updateBlendSlot(slot, motion);
-                    generateBlendStripThumbnails(motion, slot);
+                    
+                    // Generate trimmed blend strip immediately with frame range
+                    const trimmedMotion = {
+                        slot,
+                        motion,
+                        startFrame,
+                        endFrame,
+                        trimmedFrameCount,
+                        originalFrameCount: motion.frames
+                    };
+                    
+                    // Generate blend strip with trimmed data
+                    generateTrimmedBlendStrip(trimmedMotion).then(() => {
+                        // Add frame range label to the strip
+                        displayFrameRangeOnStrip(slot, startFrame, endFrame, trimmedFrameCount);
+                        // Update crosshatch after thumbnails are ready
+                        setTimeout(() => updateCrosshatchOverlap(), 200);
+                    });
                 }
                 
                 // Update blend controls visibility
@@ -3426,55 +3829,59 @@
             
             // Proceed to Blend button handler
             document.getElementById('proceed-to-blend-btn').addEventListener('click', async () => {
-                console.log('🚀 Proceeding to blend with trimmed motions...');
+                console.log('🚀 Proceeding to blend - combining existing strips...');
                 
                 const statusIndicator = document.querySelector('.blend-status-indicator');
                 const proceedBtn = document.getElementById('proceed-to-blend-btn');
                 const metricsCard = document.getElementById('blend-metrics-card');
                 
-                // Collect trimmed motion data
+                // Collect trimmed motion data from already-loaded strips
                 const trimmedMotions = [];
                 for (let slot = 1; slot <= 3; slot++) {
                     if (blendState.slots[slot]) {
                         const motion = blendState.slots[slot].motion;
-                        const startSlider = document.getElementById(`start-slider-${motion.id}`);
-                        const endSlider = document.getElementById(`end-slider-${motion.id}`);
                         
-                        if (startSlider && endSlider) {
-                            const startFrame = parseInt(startSlider.value);
-                            const endFrame = parseInt(endSlider.value);
-                            const trimmedFrameCount = endFrame - startFrame + 1;
-                            
-                            trimmedMotions.push({
-                                slot,
-                                motion,
-                                startFrame,
-                                endFrame,
-                                trimmedFrameCount,
-                                originalFrameCount: motion.frames
-                            });
-                            
-                            console.log(`✂️ Motion ${slot}: ${motion.name} trimmed ${startFrame}-${endFrame} (${trimmedFrameCount} frames)`);
-                        }
+                        // Use stored trim values from motion object (set by trim sliders)
+                        const startFrame = motion.trimStart || 0;
+                        const endFrame = motion.trimEnd || (motion.frames - 1);
+                        const trimmedFrameCount = endFrame - startFrame + 1;
+                        
+                        trimmedMotions.push({
+                            slot,
+                            motion,
+                            startFrame,
+                            endFrame,
+                            trimmedFrameCount,
+                            originalFrameCount: motion.frames
+                        });
+                        
+                        console.log(`✂️ Motion ${slot}: ${motion.name} frames ${startFrame}-${endFrame} (${trimmedFrameCount} frames)`);
                     }
                 }
                 
                 if (trimmedMotions.length < 2) {
-                    alert('Need at least 2 trimmed motions to proceed');
+                    alert('Need at least 2 motions to blend');
                     return;
                 }
                 
                 // Show loading state
                 proceedBtn.disabled = true;
                 proceedBtn.textContent = 'Processing...';
-                statusIndicator.textContent = 'Generating blend strips from trimmed motions...';
+                statusIndicator.textContent = 'Combining blend strips...';
                 statusIndicator.style.background = '#fff3cd';
                 
                 try {
-                    // Generate blend strips with trimmed thumbnails
-                    for (const trimmedMotion of trimmedMotions) {
-                        await generateTrimmedBlendStrip(trimmedMotion);
-                    }
+                    // Capture preferred region thumbnails from crosshatch bounds
+                    statusIndicator.textContent = 'Capturing preferred regions...';
+                    await capturePreferredRegionThumbnails(trimmedMotions);
+                    
+                    // Wait 500ms to ensure all character models and animations are fully loaded
+                    statusIndicator.textContent = 'Loading character models...';
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    // Populate the blend artifact strip with combined thumbnails
+                    statusIndicator.textContent = 'Building blend artifact strip...';
+                    populateBlendArtifactStrip(trimmedMotions);
                     
                     // Calculate blend metrics
                     const metrics = calculateBlendMetrics(trimmedMotions);
@@ -3506,8 +3913,19 @@
                     statusIndicator.style.background = '#d4edda';
                     statusIndicator.style.color = '#155724';
                     
-                    // Show blend controls for smoothstep adjustment
-                    showBlendControlsForTrimmedMotions(trimmedMotions);
+                    // Update blend control panel with trimmed frame counts
+                    for (const tm of trimmedMotions) {
+                        const frameCountDisplay = document.querySelector(`#motion-slot-${tm.slot} .slot-name`);
+                        if (frameCountDisplay) {
+                            frameCountDisplay.textContent = `${tm.motion.name} (${tm.trimmedFrameCount}f)`;
+                        }
+                    }
+                    
+                    // Enable generate artifacts button
+                    const generateBtn = document.getElementById('generate-artifacts-btn');
+                    if (generateBtn) {
+                        generateBtn.disabled = false;
+                    }
                     
                 } catch (error) {
                     console.error('❌ Failed to proceed to blend:', error);
@@ -3523,12 +3941,14 @@
             });
             
             // Artifacts Generate Button Handler (in Artifacts tab)
-            document.getElementById('artifacts-generate-btn').addEventListener('click', async () => {
-                console.log('🎬 Generating artifacts from artifacts tab...');
-                
-                const statusIndicator = document.getElementById('artifacts-status-indicator');
-                const generateBtn = document.getElementById('artifacts-generate-btn');
-                const blendPreviews = document.getElementById('artifacts-blend-previews');
+            const artifactsGenerateBtnOld = document.getElementById('artifacts-generate-btn');
+            if (artifactsGenerateBtnOld) {
+                artifactsGenerateBtnOld.addEventListener('click', async () => {
+                    console.log('🎬 Generating artifacts from artifacts tab...');
+                    
+                    const statusIndicator = document.getElementById('artifacts-status-indicator');
+                    const generateBtn = document.getElementById('artifacts-generate-btn');
+                const blendPreviews = document.getElementById('artifacts-frame-previews');
                 const useGemini = document.getElementById('artifacts-use-gemini').checked;
                 
                 // Get selected motions from blend state
@@ -3644,7 +4064,8 @@
                     generateBtn.classList.remove('generating');
                     generateBtn.disabled = false;
                 }
-            });
+                });
+            }
             
             // Show floating success popup
             function showArtifactsSuccessPopup(result) {
@@ -4300,23 +4721,50 @@
                 };
             }
             
+            // Display frame range label on blend strip
+            function displayFrameRangeOnStrip(slot, startFrame, endFrame, trimmedFrameCount) {
+                const stripHeader = document.querySelector(`#animation-strip-${slot} .strip-header`);
+                if (!stripHeader) return;
+                
+                // Remove existing frame range label if any
+                const existingLabel = stripHeader.querySelector('.frame-range-label');
+                if (existingLabel) existingLabel.remove();
+                
+                // Create new frame range label
+                const rangeLabel = document.createElement('span');
+                rangeLabel.className = 'frame-range-label';
+                rangeLabel.style.cssText = `
+                    font-size: 11px;
+                    color: #666;
+                    background: rgba(0, 0, 0, 0.05);
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    margin-left: 8px;
+                `;
+                rangeLabel.textContent = `${startFrame}-${endFrame} (${trimmedFrameCount}f)`;
+                stripHeader.appendChild(rangeLabel);
+                
+                console.log(`📍 Frame range displayed for slot ${slot}: ${startFrame}-${endFrame}`);
+            }
+            
             // Generate trimmed blend strip thumbnails
             function generateTrimmedBlendStrip(trimmedMotion) {
-                const { slot, motion, startFrame, endFrame, trimmedFrameCount } = trimmedMotion;
-                console.log(`✂️ Generating trimmed blend strip for: ${motion.name} (frames ${startFrame}-${endFrame})`);
-                
-                const container = document.getElementById(`frame-previews-${slot}`);
-                container.innerHTML = '<div style="padding: 20px; color: #666; font-size: 12px;">Loading trimmed frames...</div>';
-                
-                const thumbWidth = 80;
-                const thumbHeight = 80;
-                
-                // Load character model
-                const loader = new THREE.FBXLoader();
-                loader.load(
-                    '/static/models/Ch03_nonPBR.fbx',
-                    (character) => {
-                        character.scale.set(0.01, 0.01, 0.01);
+                return new Promise((resolve, reject) => {
+                    const { slot, motion, startFrame, endFrame, trimmedFrameCount } = trimmedMotion;
+                    console.log(`✂️ Generating trimmed blend strip for: ${motion.name} (frames ${startFrame}-${endFrame})`);
+                    
+                    const container = document.getElementById(`frame-previews-${slot}`);
+                    container.innerHTML = '<div style="padding: 20px; color: #666; font-size: 12px;">Loading trimmed frames...</div>';
+                    
+                    const thumbWidth = 80;
+                    const thumbHeight = 80;
+                    
+                    // Load character model
+                    const loader = new THREE.FBXLoader();
+                    loader.load(
+                        '/static/models/Ch03_nonPBR.fbx',
+                        (character) => {
+                            character.scale.set(0.01, 0.01, 0.01);
                         
                         // Load animation
                         loader.load(
@@ -4454,6 +4902,7 @@
                                             crosshatch.style.left = '0px';
                                         }
                                         updateCrosshatchOverlap();
+                                        resolve(); // Resolve promise after completion
                                     }, 100);
                                 }, 3000);
                             },
@@ -4461,6 +4910,7 @@
                             (error) => {
                                 console.error(`Failed to load animation:`, error);
                                 container.innerHTML = '<div style="padding: 20px; color: #f44336;">Failed to load</div>';
+                                reject(error);
                             }
                         );
                     },
@@ -4468,103 +4918,246 @@
                     (error) => {
                         console.error(`Failed to load character:`, error);
                         container.innerHTML = '<div style="padding: 20px; color: #f44336;">Failed to load character</div>';
+                        reject(error);
                     }
                 );
+                });
             }
             
             // Show blend controls for trimmed motions (smoothstep only)
-            function showBlendControlsForTrimmedMotions(trimmedMotions) {
-                console.log('🎛️ Showing blend controls for trimmed motions...');
+            // Populate the blend artifact strip with combined motion thumbnails and crosshatch overlays
+            function populateBlendArtifactStrip(trimmedMotions) {
+                console.log('🎨 Populating blend artifact strip with', trimmedMotions.length, 'motions');
                 
-                // For now, just show a simple smoothstep control
-                // In the future, this could be expanded
-                const statusIndicator = document.querySelector('.blend-status-indicator');
-                statusIndicator.textContent = `Ready to generate artifacts with ${trimmedMotions.length} trimmed motions`;
-                statusIndicator.style.background = '#d4edda';
-                statusIndicator.style.color = '#155724';
+                const blendFramePreviews = document.getElementById('frame-previews-blend');
+                const blendOverlapViz = document.getElementById('blend-overlap-viz');
                 
-                // Enable the generate artifacts button
-                const generateBtn = document.getElementById('generate-artifacts-btn');
-                if (generateBtn) {
-                    generateBtn.disabled = false;
-                    generateBtn.textContent = 'Generate Artifacts';
+                // Clear existing content
+                blendFramePreviews.innerHTML = '';
+                blendOverlapViz.innerHTML = '';
+                
+                // Set frame-previews-blend to position relative so overlap-viz can be absolute over it
+                blendFramePreviews.style.position = 'relative';
+                blendFramePreviews.style.minHeight = '120px';
+                
+                // Make parent timeline relative for absolute positioning
+                const stripTimeline = blendFramePreviews.closest('.strip-timeline');
+                if (stripTimeline) {
+                    stripTimeline.style.position = 'relative';
                 }
-            }
-            
-            // Generate artifacts blend thumbnails in artifacts tab
-            async function generateArtifactsBlendThumbnails(result, container) {
-                console.log('🖼️ Generating artifacts blend thumbnails...');
                 
-                container.innerHTML = '<div style="padding: 20px; text-align: center; color: #666; font-size: 12px;">Rendering thumbnails...</div>';
+                // Create a container for the combined thumbnails (horizontal strip only, no region cards)
+                const combinedThumbnailsContainer = document.createElement('div');
+                combinedThumbnailsContainer.id = 'combined-thumbnails-container';
+                combinedThumbnailsContainer.style.cssText = `
+                    display: flex;
+                    gap: 0;
+                    position: relative;
+                    overflow-x: auto;
+                    padding: 8px 0;
+                    min-height: 120px;
+                `;
+                blendFramePreviews.appendChild(combinedThumbnailsContainer);
                 
-                const thumbWidth = 80;
-                const thumbHeight = 80;
-                const numFrames = Math.min(result.artifacts.length, 50); // Limit thumbnails for performance
-                const frameStep = Math.max(1, Math.floor(result.artifacts.length / numFrames));
+                // Create overlay container for crosshatch that scrolls with thumbnails
+                const overlayContainer = document.createElement('div');
+                overlayContainer.style.cssText = `
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    height: 50%;
+                    pointer-events: none;
+                    z-index: 5;
+                `;
+                combinedThumbnailsContainer.appendChild(overlayContainer);
                 
-                // Create offscreen scene for thumbnail rendering
-                const thumbScene = new THREE.Scene();
-                thumbScene.background = new THREE.Color(0xffffff);
-                
-                const thumbCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 2000);
-                thumbCamera.position.set(0, 1.6, 3);
-                
-                // Add lights
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-                directionalLight.position.set(5, 10, 7.5);
-                thumbScene.add(ambientLight);
-                thumbScene.add(directionalLight);
-                
-                // Load character
-                const loader = new THREE.FBXLoader();
-                const character = await new Promise((resolve, reject) => {
-                    loader.load('/static/models/Ch03_nonPBR.fbx', resolve, undefined, reject);
-                });
-                
-                character.scale.set(0.01, 0.01, 0.01);
-                thumbScene.add(character);
-                
-                // Create renderer
-                const offscreenCanvas = document.createElement('canvas');
-                offscreenCanvas.width = thumbWidth;
-                offscreenCanvas.height = thumbHeight;
-                const renderer = new THREE.WebGLRenderer({ 
-                    canvas: offscreenCanvas, 
-                    antialias: true,
-                    preserveDrawingBuffer: true 
-                });
-                renderer.setSize(thumbWidth, thumbHeight);
-                
-                // Clear container
-                container.innerHTML = '';
-                
-                // Generate thumbnails
-                for (let i = 0; i < numFrames; i++) {
-                    const frameIndex = i * frameStep;
-                    const frameData = result.artifacts[frameIndex];
-                    
-                    if (frameData && frameData.positions) {
-                        // Apply pose from artifact data
-                        applyPoseFromArtifact(character, frameData);
-                        
-                        // Render frame
-                        renderer.render(thumbScene, thumbCamera);
-                        
-                        // Copy to display canvas
-                        const displayCanvas = document.createElement('canvas');
-                        displayCanvas.width = thumbWidth;
-                        displayCanvas.height = thumbHeight;
-                        displayCanvas.className = 'frame-thumb';
-                        const ctx = displayCanvas.getContext('2d');
-                        ctx.drawImage(offscreenCanvas, 0, 0);
-                        
-                        container.appendChild(displayCanvas);
+                // Get all the frame containers for the selected slots
+                const containers = [];
+                for (const tm of trimmedMotions) {
+                    const container = document.getElementById(`frame-previews-${tm.slot}`);
+                    if (container) {
+                        containers.push({ slot: tm.slot, container, motion: tm.motion.name });
                     }
                 }
                 
-                renderer.dispose();
-                console.log(`✅ Generated ${numFrames} artifact blend thumbnails`);
+                if (containers.length === 0) {
+                    combinedThumbnailsContainer.innerHTML = '<div style="padding: 20px; color: #666;">No thumbnails available</div>';
+                    return;
+                }
+                
+                // Copy all thumbnails from each motion strip into the blend strip, organized by motion
+                const colorMap = { 1: 'green', 2: 'blue', 3: 'orange' };
+                const borderColors = { 1: '#4CAF50', 2: '#2196F3', 3: '#FF9800' };
+                const thumbnailData = [];
+                
+                for (let i = 0; i < containers.length; i++) {
+                    const { slot, container, motion } = containers[i];
+                    const thumbnails = container.querySelectorAll('.frame-thumb');
+                    
+                    console.log(`  Slot ${slot}: found ${thumbnails.length} thumbnails`);
+                    
+                    // Clone and append each thumbnail directly to the combined container (single horizontal line)
+                    // IMPORTANT: Canvas cloning doesn't copy pixel data - we need to manually copy the image
+                    thumbnails.forEach((thumb, index) => {
+                        const clone = document.createElement('canvas');
+                        clone.className = thumb.className;
+                        clone.width = thumb.width;
+                        clone.height = thumb.height;
+                        
+                        // Copy all styles from original
+                        clone.style.cssText = thumb.style.cssText;
+                        clone.style.position = 'relative';
+                        clone.style.display = 'inline-block';
+                        clone.style.flexShrink = '0';
+                        
+                        // Add negative margin for overlap effect (except first thumbnail)
+                        if (index > 0) {
+                            clone.style.marginLeft = '-15px';
+                        }
+                        
+                        // Copy canvas pixel data
+                        const ctx = clone.getContext('2d');
+                        ctx.drawImage(thumb, 0, 0);
+                        
+                        combinedThumbnailsContainer.appendChild(clone);
+                    });
+                    
+                    thumbnailData.push({
+                        slot,
+                        count: thumbnails.length,
+                        startIndex: thumbnailData.reduce((sum, d) => sum + d.count, 0),
+                        motion
+                    });
+                }
+                
+                const totalThumbnails = thumbnailData.reduce((sum, d) => sum + d.count, 0);
+                console.log(`  Copied ${totalThumbnails} total thumbnails`);
+                
+                // Use requestAnimationFrame to ensure DOM is updated before adding crosshatch overlays
+                requestAnimationFrame(() => {
+                    if (totalThumbnails === 0) {
+                        console.warn('  ⚠️ No thumbnails in blend strip');
+                        return;
+                    }
+                    
+                    const containerWidth = combinedThumbnailsContainer.scrollWidth;
+                    if (containerWidth === 0) {
+                        console.warn('  ⚠️ Container width is 0');
+                        return;
+                    }
+                    
+                    // Set overlay container width to match the actual scrollable content width
+                    overlayContainer.style.width = `${containerWidth}px`;
+                    
+                    const thumbnailWidth = containerWidth / totalThumbnails;
+                    
+                    console.log(`  Container: ${containerWidth}px, Thumbnails: ${totalThumbnails}, Each: ${thumbnailWidth}px`);
+                    
+                    // Create crosshatch overlays for each motion segment
+                    for (let i = 0; i < thumbnailData.length; i++) {
+                        const { slot, count, startIndex, motion } = thumbnailData[i];
+                        
+                        // Calculate crosshatch position
+                        const crosshatchLeft = startIndex * thumbnailWidth;
+                        const crosshatchWidth = count * thumbnailWidth;
+                        
+                        // Create crosshatch overlay
+                        const overlay = document.createElement('div');
+                        overlay.className = `overlap-segment ${colorMap[slot]}`;
+                        overlay.style.position = 'absolute';
+                        overlay.style.left = `${crosshatchLeft}px`;
+                        overlay.style.width = `${crosshatchWidth}px`;
+                        overlay.style.height = '50px';
+                        overlay.style.bottom = '-75px';
+                        overlay.style.zIndex = '5';
+                        overlay.style.borderRadius = '0';
+                        overlay.style.pointerEvents = 'none';
+                        overlay.style.cursor = 'default';
+                        
+                        // Set color-specific crosshatch styles
+                        if (slot === 1) {
+                            overlay.style.background = 'repeating-linear-gradient(45deg, rgba(76, 175, 80, 0.3), rgba(76, 175, 80, 0.3) 10px, transparent 10px, transparent 20px)';
+                            overlay.style.borderLeft = '3px solid #4CAF50';
+                            overlay.style.borderRight = '3px solid #4CAF50';
+                        } else if (slot === 2) {
+                            overlay.style.background = 'repeating-linear-gradient(45deg, rgba(33, 150, 243, 0.3), rgba(33, 150, 243, 0.3) 10px, transparent 10px, transparent 20px)';
+                            overlay.style.borderLeft = '3px solid #2196F3';
+                            overlay.style.borderRight = '3px solid #2196F3';
+                        } else if (slot === 3) {
+                            overlay.style.background = 'repeating-linear-gradient(45deg, rgba(255, 152, 0, 0.3), rgba(255, 152, 0, 0.3) 10px, transparent 10px, transparent 20px)';
+                            overlay.style.borderLeft = '3px solid #FF9800';
+                            overlay.style.borderRight = '3px solid #FF9800';
+                        }
+                        
+                        // Add motion label at the top
+                        const label = document.createElement('div');
+                        label.style.cssText = `
+                            position: absolute;
+                            top: -18px;
+                            left: 0;
+                            right: 0;
+                            text-align: center;
+                            font-size: 10px;
+                            font-weight: bold;
+                            color: ${borderColors[slot]};
+                            background: white;
+                            padding: 2px 4px;
+                            border-radius: 4px 4px 0 0;
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                        `;
+                        label.textContent = motion;
+                        overlay.appendChild(label);
+                        
+                        overlayContainer.appendChild(overlay);
+                        
+                        console.log(`  Added crosshatch for slot ${slot}: ${crosshatchLeft.toFixed(1)}px - ${(crosshatchLeft + crosshatchWidth).toFixed(1)}px (${count} thumbnails)`);
+                    }
+                    
+                    // Add intersection markers between motion segments
+                    for (let i = 1; i < thumbnailData.length; i++) {
+                        const prevData = thumbnailData[i - 1];
+                        const intersectionPos = (prevData.startIndex + prevData.count) * thumbnailWidth;
+                        
+                        const marker = document.createElement('div');
+                        marker.className = 'blend-intersection-marker';
+                        marker.style.cssText = `
+                            position: absolute;
+                            left: ${intersectionPos}px;
+                            top: 0;
+                            width: 0px;
+                            height: 100%;
+                            background: linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 100%);
+                            z-index: 6;
+                        `;
+                        overlayContainer.appendChild(marker);
+                    }
+                    
+                    console.log(`  ✅ Populated blend strip with ${totalThumbnails} thumbnails and ${overlayContainer.children.length} crosshatch overlays`);
+                });
+            }
+            
+            // Copy blend strip thumbnails to artifacts tab (simplified approach)
+            async function generateArtifactsBlendThumbnails(result, container) {
+                console.log('🖼️ Copying blend strip to artifacts tab...');
+                
+                // Get the combined thumbnails container (not the entire frame-previews-blend which includes region cards)
+                const combinedThumbnailsContainer = document.getElementById('combined-thumbnails-container');
+                
+                if (!combinedThumbnailsContainer || combinedThumbnailsContainer.children.length === 0) {
+                    container.innerHTML = '<div style="padding: 20px; color: #666;">Blend strip not available. Please generate blend in Blend tab first.</div>';
+                    return;
+                }
+                
+                // Clone only the horizontal thumbnail strip (with crosshatch overlays)
+                const clonedContent = combinedThumbnailsContainer.cloneNode(true);
+                
+                // Clear artifacts container and add cloned content
+                container.innerHTML = '';
+                container.appendChild(clonedContent);
+                
+                console.log('✅ Copied blend strip to artifacts tab with', clonedContent.children.length, 'elements (thumbnails + overlays)');
             }
             
             // Apply pose from artifact data to character
@@ -4738,58 +5331,10 @@
             }
             
             // Update 3D viewport to play only trimmed frames
+            // Simplified viewport trim update - just store values, no complex updates
             function updateViewportTrimRange(motion) {
-                if (window.currentMotionViewer && window.currentMotionViewer.motion === motion) {
-                    // Update the animation mixer to loop only the trimmed range
-                    const mixer = window.currentMotionViewer.mixer;
-                    const action = window.currentMotionViewer.action;
-                    
-                    if (mixer && action) {
-                        const duration = action.getClip().duration;
-                        const fps = 30; // Mixamo standard
-                        const startTime = (motion.trimStart / (motion.frames - 1)) * duration;
-                        const endTime = (motion.trimEnd / (motion.frames - 1)) * duration;
-                        
-                        // Set loop points
-                        action.setLoop(THREE.LoopRepeat);
-                        action.time = startTime;
-                        action.setEffectiveTimeScale(1);
-                        action.setEffectiveWeight(1);
-                        
-                        // Create a custom clip with only the trimmed range
-                        const originalClip = action.getClip();
-                        const trimmedTracks = originalClip.tracks.map(track => {
-                            const newTrack = track.clone();
-                            // Trim keyframes to the specified range
-                            const startKeyframe = Math.floor((startTime / duration) * newTrack.times.length);
-                            const endKeyframe = Math.ceil((endTime / duration) * newTrack.times.length);
-                            
-                            newTrack.times = newTrack.times.slice(startKeyframe, endKeyframe);
-                            newTrack.values = newTrack.values.slice(startKeyframe * (newTrack.values.length / newTrack.times.length), 
-                                                                   endKeyframe * (newTrack.values.length / newTrack.times.length));
-                            
-                            // Adjust times to start from 0
-                            const timeOffset = newTrack.times[0];
-                            newTrack.times = newTrack.times.map(t => t - timeOffset);
-                            
-                            return newTrack;
-                        });
-                        
-                        const trimmedClip = new THREE.AnimationClip(
-                            `${originalClip.name}_trimmed_${motion.trimStart}_${motion.trimEnd}`,
-                            endTime - startTime,
-                            trimmedTracks
-                        );
-                        
-                        // Replace the action with trimmed version
-                        mixer.stopAllAction();
-                        const trimmedAction = mixer.clipAction(trimmedClip, window.currentMotionViewer.character);
-                        trimmedAction.play();
-                        window.currentMotionViewer.action = trimmedAction;
-                        
-                        console.log(`🎬 Updated viewport to play trimmed range: frames ${motion.trimStart}-${motion.trimEnd}`);
-                    }
-                }
+                // Simply log the trim range, actual trimming happens in "Proceed to Blend"
+                console.log(`✂️ Trim range set for ${motion.name}: frames ${motion.trimStart}-${motion.trimEnd}`);
             }
             
             // Update trimmed frames display
@@ -4799,39 +5344,10 @@
             }
             
             // Generate thumbnail for trimmed motion range
+            // Simplified - no thumbnail regeneration (causes loops)
             function generateTrimmedThumbnail(motion, startFrame, endFrame) {
-                const thumbnailDiv = document.getElementById(`thumb-${motion.id}`);
-                if (!thumbnailDiv) {
-                    console.warn(`⚠️ Thumbnail div not found for ${motion.id}`);
-                    return;
-                }
-                
-                console.log(`✂️ Generating trimmed thumbnail for: ${motion.name} (frames ${startFrame}-${endFrame})`);
-                
-                // For now, just add a visual indicator that trimming is active
-                // In a full implementation, this would render the animation at the trimmed range
-                const trimmedIndicator = document.createElement('div');
-                trimmedIndicator.style.position = 'absolute';
-                trimmedIndicator.style.top = '2px';
-                trimmedIndicator.style.right = '2px';
-                trimmedIndicator.style.background = '#FF6700';
-                trimmedIndicator.style.color = 'white';
-                trimmedIndicator.style.fontSize = '10px';
-                trimmedIndicator.style.padding = '1px 4px';
-                trimmedIndicator.style.borderRadius = '2px';
-                trimmedIndicator.textContent = 'TRIM';
-                
-                // Remove existing indicator if present
-                const existingIndicator = thumbnailDiv.querySelector('.trim-indicator');
-                if (existingIndicator) {
-                    existingIndicator.remove();
-                }
-                
-                trimmedIndicator.className = 'trim-indicator';
-                thumbnailDiv.style.position = 'relative';
-                thumbnailDiv.appendChild(trimmedIndicator);
-                
-                console.log(`✅ Trimmed thumbnail indicator added for: ${motion.name}`);
+                // Trimmed thumbnails generated only in "Proceed to Blend" step
+                console.log(`✂️ Trim range noted for ${motion.name}: ${startFrame}-${endFrame}`);
             }
             
             // Search functionality
@@ -4846,6 +5362,9 @@
                 // Mark card as active
                 document.querySelectorAll('.motion-card').forEach(c => c.classList.remove('active'));
                 cardElement.classList.add('active');
+                
+                // Set loading flag to prevent premature trim slider access
+                motion.isLoading = true;
                 
                 // Initialize Three.js scene if not exists
                 if (!currentScene) {
@@ -4947,27 +5466,66 @@
                                     
                                     // Update motion object with actual frame count
                                     motion.frames = actualFrames;
+                                    motion.isLoading = false; // Clear loading flag
                                     
-                                    // Update trim sliders with actual frame count
+                                    // Update trim sliders max value ONLY (preserve user's selection)
                                     const trimStart = document.getElementById(`trim-start-${motion.id}`);
                                     const trimEnd = document.getElementById(`trim-end-${motion.id}`);
                                     const trimRange = document.getElementById(`trim-range-${motion.id}`);
-                                    const trimFrameCount = document.querySelector(`#motion-details-${motion.id}`).closest('.motion-card').querySelector('.trim-frame-count');
+                                    const motionCard = cardElement;
+                                    const trimFrameCount = motionCard ? motionCard.querySelector('.trim-frame-count') : null;
                                     const motionDetails = document.getElementById(`motion-details-${motion.id}`);
                                     
                                     if (trimStart && trimEnd) {
+                                        // Update max values
                                         trimStart.max = actualFrames - 1;
                                         trimEnd.max = actualFrames - 1;
-                                        trimEnd.value = actualFrames - 1;
-                                        motion.trimEnd = actualFrames - 1;
+                                        
+                                        // Enable sliders (they start disabled)
+                                        trimStart.disabled = false;
+                                        trimEnd.disabled = false;
+                                        
+                                        // ONLY set initial values if not already set by user
+                                        if (motion.trimEnd === undefined || motion.trimEnd >= actualFrames) {
+                                            trimEnd.value = actualFrames - 1;
+                                            motion.trimEnd = actualFrames - 1;
+                                        } else {
+                                            // Preserve user's selection
+                                            trimEnd.value = motion.trimEnd;
+                                        }
+                                        
+                                        if (motion.trimStart === undefined) {
+                                            trimStart.value = 0;
+                                            motion.trimStart = 0;
+                                        } else {
+                                            // Preserve user's selection
+                                            trimStart.value = motion.trimStart;
+                                        }
+                                        
+                                        const trimmedCount = motion.trimEnd - motion.trimStart + 1;
                                         
                                         if (trimRange) {
-                                            trimRange.textContent = `0 - ${actualFrames - 1}`;
+                                            trimRange.textContent = `${motion.trimStart} - ${motion.trimEnd}`;
                                         }
                                         if (trimFrameCount) {
-                                            trimFrameCount.textContent = `(${actualFrames} frames)`;
+                                            trimFrameCount.textContent = `(${trimmedCount} frames)`;
                                         }
-                                        console.log(`✅ Updated trim sliders to ${actualFrames} frames (from actual animation)`);
+                                        
+                                        // Update the "Trimmed: X frames" display
+                                        const trimmedFramesDisplay = document.getElementById(`trimmed-frames-${motion.id}`);
+                                        if (trimmedFramesDisplay) {
+                                            trimmedFramesDisplay.textContent = `${trimmedCount} frames selected`;
+                                        }
+                                        
+                                        // Update the track visualization
+                                        const track = cardElement.querySelector('.trim-range-track');
+                                        if (track) {
+                                            const startPercent = (motion.trimStart / (actualFrames - 1)) * 100;
+                                            const endPercent = (motion.trimEnd / (actualFrames - 1)) * 100;
+                                            track.style.background = `linear-gradient(to right, #e0e0e0 0%, #e0e0e0 ${startPercent}%, #FF6700 ${startPercent}%, #FF6700 ${endPercent}%, #e0e0e0 ${endPercent}%, #e0e0e0 100%)`;
+                                        }
+                                        
+                                        console.log(`✅ Trim sliders ready: ${motion.trimStart}-${motion.trimEnd} (max: ${actualFrames - 1})`);
                                     }
                                     
                                     // Update motion details display
@@ -5029,8 +5587,8 @@
                 
                 // Camera
                 const viewerElement = document.querySelector('.animation-viewer');
-                const width = viewerElement.clientWidth - 280; // Subtract sidebar width
-                const height = viewerElement.clientHeight;
+                const width = Math.max(400, viewerElement.clientWidth - 280); // Subtract sidebar width, minimum 400px
+                const height = Math.max(300, viewerElement.clientHeight); // Minimum 300px
                 const aspect = width / height;
                 currentCamera = new THREE.PerspectiveCamera(45, aspect, 0.1, 2000);
                 currentCamera.position.set(0, 1.6, 3);
@@ -5130,8 +5688,8 @@
                 // Add window resize handler
                 window.addEventListener('resize', () => {
                     const viewerElement = document.querySelector('.animation-viewer');
-                    const newWidth = viewerElement.clientWidth - 280;
-                    const newHeight = viewerElement.clientHeight;
+                    const newWidth = Math.max(400, viewerElement.clientWidth - 280); // Minimum 400px
+                    const newHeight = Math.max(300, viewerElement.clientHeight); // Minimum 300px
                     
                     currentCamera.aspect = newWidth / newHeight;
                     currentCamera.updateProjectionMatrix();
@@ -5201,6 +5759,41 @@
             console.log('Motion grid element:', motionGrid);
             console.log('Number of motions to render:', motions.length);
             renderMotionCards();
+            
+            // Auto-initialize trim data in background (without generating strips)
+            setTimeout(() => {
+                if (motions.length > 0) {
+                    console.log('🎬 Auto-initializing trim data for all motions');
+                    motions.forEach(motion => {
+                        // Set default trim values so frame data is ready
+                        if (motion.trimStart === undefined) motion.trimStart = 0;
+                        if (motion.trimEnd === undefined) motion.trimEnd = motion.frames - 1;
+                        
+                        // Update the motion object with frame count
+                        if (!motion.frames) {
+                            // Calculate frames from duration if not set
+                            motion.frames = Math.floor(motion.duration * 30); // 30 fps standard
+                        }
+                        
+                        // Update the display for each motion card
+                        const trimRange = document.getElementById(`trim-range-${motion.id}`);
+                        const trimFrameCount = document.querySelector(`#motion-card-${motion.id} .trim-frame-count`);
+                        const trimmedFrames = document.getElementById(`trimmed-frames-${motion.id}`);
+                        
+                        if (trimRange && motion.frames) {
+                            const trimmedCount = motion.trimEnd - motion.trimStart + 1;
+                            trimRange.textContent = `${motion.trimStart} - ${motion.trimEnd}`;
+                            if (trimFrameCount) {
+                                trimFrameCount.textContent = `(${trimmedCount} frames)`;
+                            }
+                            if (trimmedFrames) {
+                                trimmedFrames.textContent = `${trimmedCount} frames selected`;
+                            }
+                        }
+                    });
+                    console.log('✅ Trim data initialized for', motions.length, 'motions');
+                }
+            }, 100);
         }
         
         // Blend Tab Logic
@@ -5645,7 +6238,7 @@
             
             init() {
                 if (!this.canvas) {
-                    console.error('❌ Artifacts canvas not found - viewer cannot initialize');
+                    console.warn('⚠️ Artifacts canvas not found - using new marketplace layout');
                     return false;
                 }
                 
@@ -6378,6 +6971,203 @@
                 }
             }
         }
+        
+        // Marketplace functions
+        function populateArtifactMarketplace() {
+            const artifactGrid = document.querySelector('.artifact-grid');
+            if (!artifactGrid) return;
+            
+            // Clear existing artifacts
+            artifactGrid.innerHTML = '';
+            
+            // Check if we have any generated artifacts in blend state
+            if (!blendState.currentArtifacts || !blendState.currentArtifacts.artifacts || blendState.currentArtifacts.artifacts.length === 0) {
+                // Show placeholder
+                artifactGrid.innerHTML = `
+                    <div class="artifact-placeholder">
+                        <div class="placeholder-icon">🎨</div>
+                        <p><strong>No Blend Artifacts Yet</strong></p>
+                        <p>Create a blend in the Blend tab, then your artifact will appear here!</p>
+                        <small>Blend artifacts are automatically listed here for tokenization and sale.</small>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Create artifact card from current blend
+            const artifact = blendState.currentArtifacts;
+            const motions = blendState.currentBlendSelection || [];
+            
+            const motionNames = motions.map(m => m.motion.name).join(' + ');
+            const totalFrames = artifact.artifacts.length;
+            const duration = (totalFrames / 30).toFixed(2);
+            const price = calculateArtifactPrice(totalFrames, motions.length);
+            
+            const artifactCard = document.createElement('div');
+            artifactCard.className = 'artifact-card';
+            artifactCard.innerHTML = `
+                <div class="artifact-thumbnail">
+                    <canvas id="artifact-thumbnail-canvas"></canvas>
+                    <div class="artifact-token-badge">🪙 Not Tokenized</div>
+                </div>
+                <div class="artifact-info">
+                    <h3 class="artifact-title">${motionNames || 'Blend Artifact'}</h3>
+                    <div class="artifact-meta">
+                        <span>⏱️ ${duration}s</span>
+                        <span>🎞️ ${totalFrames} frames</span>
+                    </div>
+                    <div class="artifact-meta">
+                        <span>📦 ${motions.length} motions</span>
+                        <span>✨ ${artifact.gemini_analysis ? 'AI Enhanced' : 'Standard'}</span>
+                    </div>
+                    <div class="artifact-price">
+                        <span class="price-tag">${price} USDC</span>
+                        <button class="buy-btn" onclick="showPurchaseModal('${motionNames}', ${price}, ${totalFrames})">
+                            Tokenize & List
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            artifactGrid.appendChild(artifactCard);
+            
+            // Render thumbnail preview using Three.js
+            setTimeout(() => renderArtifactThumbnail('artifact-thumbnail-canvas', artifact), 100);
+        }
+        
+        function calculateArtifactPrice(frameCount, motionCount) {
+            // Base price: $5 USDC
+            let price = 5;
+            
+            // +$2 for each additional motion beyond 2
+            if (motionCount > 2) {
+                price += (motionCount - 2) * 2;
+            }
+            
+            // +$1 for every 100 frames
+            price += Math.floor(frameCount / 100);
+            
+            return price;
+        }
+        
+        function renderArtifactThumbnail(canvasId, artifactData) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            // Create simple 2D preview (for now)
+            const ctx = canvas.getContext('2d');
+            canvas.width = 300;
+            canvas.height = 200;
+            
+            // Gradient background
+            const gradient = ctx.createLinearGradient(0, 0, 300, 200);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 300, 200);
+            
+            // Draw frame count
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(artifactData.artifacts.length, 150, 80);
+            
+            ctx.font = '16px Arial';
+            ctx.fillText('FRAMES', 150, 120);
+            
+            // Draw blend indicator
+            const transitions = artifactData.total_transitions || 0;
+            ctx.font = '14px Arial';
+            ctx.fillText(`${transitions} Transitions`, 150, 150);
+        }
+        
+        let currentPurchaseData = null;
+        
+        function showPurchaseModal(artifactName, price, frameCount) {
+            currentPurchaseData = { artifactName, price, frameCount };
+            
+            const modal = document.querySelector('.purchase-modal');
+            modal.style.display = 'flex';
+            
+            // Update modal content
+            document.getElementById('modal-artifact-name').textContent = artifactName;
+            document.getElementById('modal-price-value').textContent = `${price} USDC`;
+        }
+        
+        function closePurchaseModal() {
+            const modal = document.querySelector('.purchase-modal');
+            modal.style.display = 'none';
+            currentPurchaseData = null;
+        }
+        
+        async function processPurchase() {
+            if (!currentPurchaseData) return;
+            
+            const walletAddress = document.getElementById('wallet-address-input').value.trim();
+            
+            if (!walletAddress || walletAddress.length < 40) {
+                alert('Please enter a valid wallet address');
+                return;
+            }
+            
+            const purchaseBtn = document.querySelector('.purchase-btn');
+            purchaseBtn.disabled = true;
+            purchaseBtn.innerHTML = '<span>⏳</span> Processing...';
+            
+            try {
+                console.log('🪙 Tokenizing artifact on Arc testnet...');
+                
+                // Call Arc tokenization endpoint
+                const response = await fetch('/api/arc/tokenize-artifact', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        artifact_data: blendState.currentArtifacts,
+                        buyer_address: walletAddress,
+                        price_usdc: currentPurchaseData.price,
+                        metadata: {
+                            name: currentPurchaseData.artifactName,
+                            frames: currentPurchaseData.frameCount,
+                            created: new Date().toISOString()
+                        }
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Tokenization failed');
+                }
+                
+                const result = await response.json();
+                console.log('✅ Artifact tokenized:', result);
+                
+                alert(`Success! Token ID: ${result.token_id}\nTransaction: ${result.tx_hash}`);
+                closePurchaseModal();
+                
+                // Update artifact card to show "Tokenized"
+                populateArtifactMarketplace();
+                
+            } catch (error) {
+                console.error('❌ Purchase failed:', error);
+                alert(`Purchase failed: ${error.message}`);
+            } finally {
+                purchaseBtn.disabled = false;
+                purchaseBtn.innerHTML = '<span>💳</span> Complete Purchase';
+            }
+        }
+        
+        // Auto-populate marketplace when switching to Artifacts tab
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetTab = tab.dataset.tab;
+                if (targetTab === 'artifacts') {
+                    setTimeout(populateArtifactMarketplace, 100);
+                }
+            });
+        });
     </script>
 </body>
 </html>
