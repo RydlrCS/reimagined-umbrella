@@ -23,6 +23,16 @@ from ..schemas.models import (
     MotionCanonicalPack,
     MintAuthorization,
     MintMessage,
+    RoyaltyObligation,
+    DerivativeDetectionResult,
+    RoyaltyChain,
+    RoyaltyNode,
+    ROYALTY_DECAY_FACTOR,
+    MAX_ROYALTY_CHAIN_DEPTH,
+    DEFAULT_CREATOR_SHARE_BPS,
+    DEFAULT_ORACLE_SHARE_BPS,
+    DEFAULT_PLATFORM_SHARE_BPS,
+    DEFAULT_OPS_SHARE_BPS,
 )
 from ..utils.logging import setup_logging, set_correlation_id
 from ..utils.errors import DecisionError, NoveltyRejectionError, ManualReviewRequiredError
@@ -46,6 +56,16 @@ class AttestationConfig(BaseModel):
     distance_metric: str = Field(default="euclidean", pattern=r"^(euclidean|cosine)$")
     embedding_dim: int = Field(default=512, ge=128)
     embedding_model_id: str = "motion_encoder_v1"
+    
+    # Derivative detection
+    derivative_threshold: float = Field(
+        default=0.85, ge=0.0, le=1.0,
+        description="Similarity threshold for derivative detection"
+    )
+    default_derivative_royalty: float = Field(
+        default=0.10, ge=0.0, le=1.0,
+        description="Default royalty percentage for derivatives"
+    )
     
     # EIP-712 signing
     chain_id: int = Field(default=1, ge=1)
@@ -417,3 +437,321 @@ class AttestationOracle:
         )
         
         return auth
+
+    # -------------------------------------------------------------------------
+    # Derivative Detection & Royalty Chain Management
+    # -------------------------------------------------------------------------
+
+    def detect_derivative(
+        self,
+        tensor_hash: str,
+        knn_neighbors: List[KNNNeighbor],
+        motion_metadata: Optional[Dict[str, Any]] = None,
+    ) -> DerivativeDetectionResult:
+        """
+        Detect if motion is derivative of existing content.
+        
+        Uses KNN neighbor distances to determine if the new motion
+        is too similar to existing content. If so, attaches royalty
+        obligations to the original creators.
+        
+        Args:
+            tensor_hash: Keccak256 hash of tensor data
+            knn_neighbors: Nearest neighbors from similarity check
+            motion_metadata: Optional metadata including creator info
+        
+        Returns:
+            DerivativeDetectionResult with royalty obligations
+        """
+        logger.info(f"[ENTRY] detect_derivative: tensor_hash={tensor_hash[:16]}...")
+        
+        # No neighbors = definitely unique
+        if not knn_neighbors:
+            logger.debug("[EXIT] detect_derivative: no neighbors, unique")
+            return DerivativeDetectionResult(
+                is_derivative=False,
+                similarity_score=0.0,
+                detection_method="knn",
+                reasoning="No existing motions to compare against",
+            )
+        
+        # Get closest neighbor
+        closest = knn_neighbors[0]
+        distance = closest.dist
+        
+        # Convert distance to similarity (assuming normalized embeddings)
+        # For euclidean distance on unit vectors: max distance is 2, so scale
+        similarity_score = max(0.0, min(1.0, 1.0 - (distance / 2.0)))
+        
+        # Check against threshold
+        is_derivative = similarity_score >= self.config.derivative_threshold
+        
+        royalty_obligations: List[RoyaltyObligation] = []
+        source_motion_id: Optional[str] = None
+        source_pack_hash: Optional[str] = None
+        
+        if is_derivative:
+            source_motion_id = closest.motion_id
+            # Generate deterministic pack hash from motion_id for demo
+            source_pack_hash = f"0x{hashlib.sha256(source_motion_id.encode()).hexdigest()}"
+            
+            # Create royalty obligation
+            original_creator = "0x0000000000000000000000000000000000000001"  # Default
+            if motion_metadata and "creator_address" in motion_metadata:
+                original_creator = motion_metadata["creator_address"]
+            
+            royalty_obligations.append(
+                RoyaltyObligation(
+                    original_pack_hash=source_pack_hash,
+                    original_creator=original_creator,
+                    original_motion_id=source_motion_id,
+                    royalty_percentage=self.config.default_derivative_royalty,
+                    derivation_score=similarity_score,
+                )
+            )
+            
+            logger.info(
+                f"Derivative detected: source={source_motion_id}, "
+                f"similarity={similarity_score:.3f}"
+            )
+        
+        result = DerivativeDetectionResult(
+            is_derivative=is_derivative,
+            source_motion_id=source_motion_id,
+            source_pack_hash=source_pack_hash,
+            similarity_score=similarity_score,
+            detection_method="knn",
+            royalty_obligations=royalty_obligations,
+            reasoning=f"Similarity {similarity_score:.3f} vs threshold {self.config.derivative_threshold}",
+        )
+        
+        logger.debug(f"[EXIT] detect_derivative: is_derivative={is_derivative}")
+        return result
+
+    def build_royalty_chain(
+        self,
+        motion_id: str,
+        creator_address: str,
+        derivative_result: Optional[DerivativeDetectionResult] = None,
+        oracle_address: str = "0x0000000000000000000000000000000000000001",
+        platform_address: str = "0x0000000000000000000000000000000000000002",
+        ops_address: str = "0x0000000000000000000000000000000000000003",
+    ) -> RoyaltyChain:
+        """
+        Build royalty chain for a motion with optional parent derivation.
+        
+        Creates a RoyaltyChain with proper payout nodes. If the motion
+        is derivative, includes parent chain reference for recursive payouts.
+        
+        Args:
+            motion_id: New motion ID
+            creator_address: Creator's wallet address
+            derivative_result: Optional derivative detection result
+            oracle_address: Oracle wallet for attestation fees
+            platform_address: Platform wallet for service fees
+            ops_address: Operations wallet for gas/maintenance
+        
+        Returns:
+            RoyaltyChain with all payout nodes
+        """
+        logger.info(f"[ENTRY] build_royalty_chain: motion_id={motion_id}")
+        
+        # Build base nodes (direct recipients)
+        nodes: List[RoyaltyNode] = [
+            RoyaltyNode(
+                wallet=creator_address,
+                share_bps=DEFAULT_CREATOR_SHARE_BPS,
+                role="creator",
+                depth=0,
+                motion_id=motion_id,
+            ),
+            RoyaltyNode(
+                wallet=oracle_address,
+                share_bps=DEFAULT_ORACLE_SHARE_BPS,
+                role="oracle",
+                depth=0,
+            ),
+            RoyaltyNode(
+                wallet=platform_address,
+                share_bps=DEFAULT_PLATFORM_SHARE_BPS,
+                role="platform",
+                depth=0,
+            ),
+            RoyaltyNode(
+                wallet=ops_address,
+                share_bps=DEFAULT_OPS_SHARE_BPS,
+                role="ops",
+                depth=0,
+            ),
+        ]
+        
+        parent_motion_id: Optional[str] = None
+        parent_chain: Optional[RoyaltyChain] = None
+        total_depth = 0
+        
+        # Add parent creator if derivative
+        if derivative_result and derivative_result.is_derivative:
+            for obligation in derivative_result.royalty_obligations:
+                parent_motion_id = obligation.original_motion_id
+                
+                # Add parent creator as royalty recipient
+                # Note: Parent's share comes from creator's portion via decay factor
+                nodes.append(
+                    RoyaltyNode(
+                        wallet=obligation.original_creator,
+                        share_bps=0,  # Calculated during payout via decay
+                        role="parent_creator",
+                        depth=1,
+                        motion_id=obligation.original_motion_id,
+                    )
+                )
+                
+                total_depth = 1  # At least one parent
+                
+                logger.info(
+                    f"Added parent creator: {obligation.original_creator}, "
+                    f"motion={obligation.original_motion_id}"
+                )
+        
+        chain = RoyaltyChain(
+            motion_id=motion_id,
+            nodes=nodes,
+            parent_motion_id=parent_motion_id,
+            parent_chain=parent_chain,  # Would be loaded from storage in production
+            total_depth=total_depth,
+        )
+        
+        logger.info(
+            f"Royalty chain built: nodes={len(nodes)}, depth={total_depth}"
+        )
+        logger.debug(f"[EXIT] build_royalty_chain")
+        return chain
+
+    def validate_no_circular_reference(
+        self,
+        motion_id: str,
+        parent_motion_ids: List[str],
+    ) -> bool:
+        """
+        Validate that adding a motion doesn't create circular reference.
+        
+        Oracle-side validation at mint time to prevent circular derivation
+        chains (A→B→C→A) which would cause infinite royalty loops.
+        
+        Args:
+            motion_id: New motion being minted
+            parent_motion_ids: All ancestor motion IDs
+        
+        Returns:
+            True if valid (no circular reference)
+        
+        Raises:
+            NoveltyRejectionError: If circular reference or depth exceeded
+        """
+        logger.debug(
+            f"[ENTRY] validate_no_circular_reference: motion_id={motion_id}"
+        )
+        
+        # Check if motion_id appears in its own ancestry
+        if motion_id in parent_motion_ids:
+            logger.error(f"Circular reference: {motion_id} is its own ancestor")
+            raise NoveltyRejectionError(
+                f"Circular derivation chain: {motion_id} appears in ancestry",
+                details={"motion_id": motion_id, "ancestors": parent_motion_ids},
+            )
+        
+        # Check chain depth against global constant
+        if len(parent_motion_ids) > MAX_ROYALTY_CHAIN_DEPTH:
+            logger.warning(
+                f"Chain depth {len(parent_motion_ids)} exceeds max {MAX_ROYALTY_CHAIN_DEPTH}"
+            )
+            raise NoveltyRejectionError(
+                f"Royalty chain depth {len(parent_motion_ids)} exceeds maximum {MAX_ROYALTY_CHAIN_DEPTH}",
+                details={
+                    "depth": len(parent_motion_ids),
+                    "max_depth": MAX_ROYALTY_CHAIN_DEPTH,
+                },
+            )
+        
+        logger.info(f"Circular reference check passed: depth={len(parent_motion_ids)}")
+        logger.debug(f"[EXIT] validate_no_circular_reference: valid=True")
+        return True
+
+    def validate_similarity_with_derivative_check(
+        self,
+        analysis_id: str,
+        tensor_hash: str,
+        creator_address: str,
+        gemini_descriptors: Optional[Dict[str, Any]] = None,
+        safety_flags: Optional[List[str]] = None,
+        parent_motion_ids: Optional[List[str]] = None,
+        correlation_id: Optional[str] = None,
+    ) -> Tuple[SimilarityCheck, Optional[RoyaltyChain]]:
+        """
+        Extended similarity validation with derivative detection.
+        
+        Combines novelty check with derivative detection and royalty
+        chain construction. This is the primary entry point for
+        attestation with payment automation.
+        
+        Args:
+            analysis_id: Gemini analysis ID
+            tensor_hash: Tensor SHA256 hash
+            creator_address: Creator's wallet address
+            gemini_descriptors: Gemini analysis outputs
+            safety_flags: Safety flags from Gemini
+            parent_motion_ids: Known parent motion IDs (for circular check)
+            correlation_id: Correlation ID for tracing
+        
+        Returns:
+            Tuple of (SimilarityCheck, RoyaltyChain or None)
+        """
+        if correlation_id:
+            set_correlation_id(correlation_id)
+        
+        logger.info(
+            f"[ENTRY] validate_similarity_with_derivative_check: "
+            f"analysis_id={analysis_id}"
+        )
+        
+        # Validate no circular references if parent IDs provided
+        if parent_motion_ids:
+            # Generate motion ID from analysis for check
+            motion_id = f"motion_{analysis_id[:16]}"
+            self.validate_no_circular_reference(motion_id, parent_motion_ids)
+        
+        # Run standard similarity check
+        similarity_check = self.validate_similarity(
+            analysis_id=analysis_id,
+            tensor_hash=tensor_hash,
+            gemini_descriptors=gemini_descriptors,
+            safety_flags=safety_flags,
+            correlation_id=correlation_id,
+        )
+        
+        royalty_chain: Optional[RoyaltyChain] = None
+        
+        # If decision is MINT, check for derivative and build royalty chain
+        if similarity_check.decision.result == "MINT":
+            # Detect derivative using kNN neighbors
+            derivative_result = self.detect_derivative(
+                tensor_hash=tensor_hash,
+                knn_neighbors=similarity_check.knn.neighbors,
+            )
+            
+            # Build royalty chain
+            motion_id = f"motion_{analysis_id[:16]}"
+            royalty_chain = self.build_royalty_chain(
+                motion_id=motion_id,
+                creator_address=creator_address,
+                derivative_result=derivative_result,
+            )
+            
+            logger.info(
+                f"Royalty chain created: is_derivative={derivative_result.is_derivative}, "
+                f"depth={royalty_chain.total_depth}"
+            )
+        
+        logger.debug(f"[EXIT] validate_similarity_with_derivative_check")
+        return similarity_check, royalty_chain
+

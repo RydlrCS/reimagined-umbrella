@@ -1,0 +1,48 @@
+{
+  "blend_id": "spade-36d1e85a2686",
+  "spade_level": 1,
+  "spade_level_name": "coarse",
+  "source_motions": [
+    {
+      "path": "/workspaces/reimagined-umbrella/data/mixamo_anims/fbx/Swing Dancing.fbx",
+      "name": "Swing Dancing",
+      "frames": 660,
+      "joints": 22,
+      "style_labels": [
+        "dance"
+      ],
+      "synthetic": false
+    },
+    {
+      "path": "/workspaces/reimagined-umbrella/data/mixamo_anims/fbx/Salsa Dancing.fbx",
+      "name": "Salsa Dancing",
+      "frames": 660,
+      "joints": 22,
+      "style_labels": [
+        "dance"
+      ],
+      "synthetic": false
+    }
+  ],
+  "weights": [
+    0.5,
+    0.5
+  ],
+  "transition_frames": 30,
+  "total_frames": 660,
+  "metrics": {
+    "fid_score": 3925.420865426019,
+    "coverage": 0.0,
+    "diversity": 3.7105013060387546,
+    "smoothness": 0.5180346965789795,
+    "foot_sliding": 0.0,
+    "spade_level_used": 1,
+    "transition_quality": 0.6692768335342407,
+    "blend_time_ms": 416.83720299988636,
+    "metrics_time_ms": 18178.370731999166
+  },
+  "pytorch_available": true,
+  "device": "cpu",
+  "trainable_params": 281671,
+  "checkpoint_loaded": false
+}

@@ -320,6 +320,106 @@ async def serve_css():
     return FileResponse(css_path, media_type="text/css")
 
 
+# ========== Favicon Routes ==========
+
+@app.get("/favicon.ico")
+async def serve_favicon() -> FileResponse:
+    """Serve favicon.ico file."""
+    logger.debug("[ENTRY] serve_favicon: Serving favicon.ico")
+    favicon_path = Path(__file__).parent.parent / "ui" / "favicon_io" / "favicon.ico"
+    
+    if not favicon_path.exists():
+        logger.warning("[EXIT] serve_favicon: Favicon not found")
+        raise HTTPException(status_code=404, detail="Favicon not found")
+    
+    logger.debug("[EXIT] serve_favicon: Favicon served successfully")
+    return FileResponse(favicon_path, media_type="image/x-icon")
+
+
+@app.get("/favicon-16x16.png")
+async def serve_favicon_16() -> FileResponse:
+    """Serve 16x16 favicon PNG."""
+    logger.debug("[ENTRY] serve_favicon_16: Serving favicon-16x16.png")
+    favicon_path = Path(__file__).parent.parent / "ui" / "favicon_io" / "favicon-16x16.png"
+    
+    if not favicon_path.exists():
+        logger.warning("[EXIT] serve_favicon_16: Favicon not found")
+        raise HTTPException(status_code=404, detail="Favicon 16x16 not found")
+    
+    logger.debug("[EXIT] serve_favicon_16: Favicon served successfully")
+    return FileResponse(favicon_path, media_type="image/png")
+
+
+@app.get("/favicon-32x32.png")
+async def serve_favicon_32() -> FileResponse:
+    """Serve 32x32 favicon PNG."""
+    logger.debug("[ENTRY] serve_favicon_32: Serving favicon-32x32.png")
+    favicon_path = Path(__file__).parent.parent / "ui" / "favicon_io" / "favicon-32x32.png"
+    
+    if not favicon_path.exists():
+        logger.warning("[EXIT] serve_favicon_32: Favicon not found")
+        raise HTTPException(status_code=404, detail="Favicon 32x32 not found")
+    
+    logger.debug("[EXIT] serve_favicon_32: Favicon served successfully")
+    return FileResponse(favicon_path, media_type="image/png")
+
+
+@app.get("/apple-touch-icon.png")
+async def serve_apple_touch_icon() -> FileResponse:
+    """Serve Apple touch icon for iOS devices."""
+    logger.debug("[ENTRY] serve_apple_touch_icon: Serving apple-touch-icon.png")
+    icon_path = Path(__file__).parent.parent / "ui" / "favicon_io" / "apple-touch-icon.png"
+    
+    if not icon_path.exists():
+        logger.warning("[EXIT] serve_apple_touch_icon: Icon not found")
+        raise HTTPException(status_code=404, detail="Apple touch icon not found")
+    
+    logger.debug("[EXIT] serve_apple_touch_icon: Icon served successfully")
+    return FileResponse(icon_path, media_type="image/png")
+
+
+@app.get("/android-chrome-192x192.png")
+async def serve_android_chrome_192() -> FileResponse:
+    """Serve Android Chrome 192x192 icon."""
+    logger.debug("[ENTRY] serve_android_chrome_192: Serving android-chrome-192x192.png")
+    icon_path = Path(__file__).parent.parent / "ui" / "favicon_io" / "android-chrome-192x192.png"
+    
+    if not icon_path.exists():
+        logger.warning("[EXIT] serve_android_chrome_192: Icon not found")
+        raise HTTPException(status_code=404, detail="Android Chrome 192 icon not found")
+    
+    logger.debug("[EXIT] serve_android_chrome_192: Icon served successfully")
+    return FileResponse(icon_path, media_type="image/png")
+
+
+@app.get("/android-chrome-512x512.png")
+async def serve_android_chrome_512() -> FileResponse:
+    """Serve Android Chrome 512x512 icon."""
+    logger.debug("[ENTRY] serve_android_chrome_512: Serving android-chrome-512x512.png")
+    icon_path = Path(__file__).parent.parent / "ui" / "favicon_io" / "android-chrome-512x512.png"
+    
+    if not icon_path.exists():
+        logger.warning("[EXIT] serve_android_chrome_512: Icon not found")
+        raise HTTPException(status_code=404, detail="Android Chrome 512 icon not found")
+    
+    logger.debug("[EXIT] serve_android_chrome_512: Icon served successfully")
+    return FileResponse(icon_path, media_type="image/png")
+
+
+@app.get("/site.webmanifest")
+async def serve_webmanifest() -> FileResponse:
+    """Serve PWA web manifest."""
+    logger.debug("[ENTRY] serve_webmanifest: Serving site.webmanifest")
+    manifest_path = Path(__file__).parent.parent / "ui" / "favicon_io" / "site.webmanifest"
+    
+    if not manifest_path.exists():
+        logger.warning("[EXIT] serve_webmanifest: Manifest not found")
+        raise HTTPException(status_code=404, detail="Web manifest not found")
+    
+    logger.debug("[EXIT] serve_webmanifest: Manifest served successfully")
+    return FileResponse(manifest_path, media_type="application/manifest+json")
+
+
 @app.get("/visualizer.js")
 async def serve_js():
     """Serve JavaScript file."""
@@ -353,16 +453,72 @@ async def serve_metrics_js():
     return FileResponse(js_path, media_type="application/javascript")
 
 
+# ========== Autonomous Commerce UI ==========
+
+@app.get("/commerce", response_class=HTMLResponse)
+async def serve_autonomous_commerce():
+    """Serve the Autonomous Commerce marketplace UI."""
+    ui_path = Path(__file__).parent.parent / "ui" / "autonomous-commerce.html"
+    
+    if not ui_path.exists():
+        raise HTTPException(status_code=404, detail="Autonomous Commerce UI not found")
+    
+    with open(ui_path, 'r') as f:
+        return HTMLResponse(content=f.read())
+
+
+@app.get("/autonomous-commerce.js")
+async def serve_autonomous_commerce_js():
+    """Serve Autonomous Commerce JavaScript file."""
+    js_path = Path(__file__).parent.parent / "ui" / "autonomous-commerce.js"
+    
+    if not js_path.exists():
+        raise HTTPException(status_code=404, detail="Autonomous Commerce JavaScript not found")
+    
+    return FileResponse(js_path, media_type="application/javascript")
+
+
 @app.get("/static/models/Ch03_nonPBR.fbx")
 async def serve_character_model():
-    """Serve Michele character FBX model."""
-    # Try project root first
-    model_path = Path("/workspaces/reimagined-umbrella/Ch03_nonPBR.fbx")
+    """Serve Michele character FBX model (legacy path, redirects to michelle.fbx)."""
+    # Try new name first (michelle.fbx), then fall back to old name
+    model_paths = [
+        Path("/workspaces/reimagined-umbrella/data/mixamo_anims/fbx/michelle.fbx"),
+        Path("/workspaces/reimagined-umbrella/Ch03_nonPBR.fbx"),
+    ]
+    
+    for model_path in model_paths:
+        if model_path.exists():
+            return FileResponse(model_path, media_type="application/octet-stream")
+    
+    raise HTTPException(status_code=404, detail="Character model not found")
+
+
+@app.get("/static/models/michelle.fbx")
+async def serve_michelle_character():
+    """Serve Michelle character FBX model."""
+    model_path = Path("/workspaces/reimagined-umbrella/data/mixamo_anims/fbx/michelle.fbx")
     
     if not model_path.exists():
-        raise HTTPException(status_code=404, detail="Character model not found")
+        raise HTTPException(status_code=404, detail="Michelle character model not found")
     
     return FileResponse(model_path, media_type="application/octet-stream")
+
+
+@app.get("/static/models/remy.fbx")
+async def serve_remy_character():
+    """Serve Remy character FBX model."""
+    # Try both capitalizations
+    model_paths = [
+        Path("/workspaces/reimagined-umbrella/data/mixamo_anims/fbx/Remy.fbx"),
+        Path("/workspaces/reimagined-umbrella/data/mixamo_anims/fbx/remy.fbx"),
+    ]
+    
+    for model_path in model_paths:
+        if model_path.exists():
+            return FileResponse(model_path, media_type="application/octet-stream")
+    
+    raise HTTPException(status_code=404, detail="Remy character model not found")
 
 
 @app.get("/static/models/X Bot@Capoeira.fbx")
@@ -404,13 +560,25 @@ async def serve_mixamo_fbx(filename: str):
         raise HTTPException(status_code=404, detail=f"FBX file not found: {filename}")
     
     return FileResponse(model_path, media_type="application/octet-stream")
-    """Serve Metrics Dashboard JavaScript file."""
-    js_path = Path(__file__).parent.parent / "ui" / "metrics-dashboard.js"
+
+
+@app.get("/static/animations/{filename:path}")
+async def serve_animation_fbx(filename: str):
+    """Serve animation FBX files from mixamo_anims directory."""
+    # Sanitize filename - allow @ and spaces in filenames
+    if ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
     
-    if not js_path.exists():
-        raise HTTPException(status_code=404, detail="Metrics dashboard JavaScript not found")
+    # URL decode the filename (spaces may be encoded as %20)
+    from urllib.parse import unquote
+    decoded_filename = unquote(filename)
     
-    return FileResponse(js_path, media_type="application/javascript")
+    model_path = Path(f"/workspaces/reimagined-umbrella/data/mixamo_anims/fbx/{decoded_filename}")
+    
+    if not model_path.exists():
+        raise HTTPException(status_code=404, detail=f"Animation FBX file not found: {decoded_filename}")
+    
+    return FileResponse(model_path, media_type="application/octet-stream")
 
 
 @app.get("/api/motions/library")
@@ -419,50 +587,96 @@ async def get_motion_library():
     Get motion library catalog.
     
     Returns list of available motions with metadata from Mixamo FBX files.
+    Filters out character files (michelle.fbx, Remy.fbx) - only returns animations.
     """
     logger.info("Fetching motion library")
     
     # Path to FBX files
     fbx_dir = Path(__file__).parent.parent.parent.parent / "data" / "mixamo_anims" / "fbx"
     
+    # Character files to exclude from animation list
+    character_files = {'michelle.fbx', 'remy.fbx', 'ch03_nonpbr.fbx'}
+    
+    # Animations optimized for specific characters
+    # Swing Dancing and Salsa Dancing are optimized for Remy
+    # All others are mapped for Michelle
+    remy_animations = {'swing dancing.fbx', 'salsa dancing.fbx'}
+    
     motions = []
     
     if fbx_dir.exists():
         for fbx_file in fbx_dir.glob("*.fbx"):
+            # Skip character files - they are not animations
+            if fbx_file.name.lower() in character_files:
+                continue
+                
             # Extract motion name from filename
             # Example: "X Bot@Capoeira.fbx" -> "Capoeira"
             filename = fbx_file.stem
             motion_name = filename.split('@')[-1] if '@' in filename else filename
             
-            # Determine tags based on motion name keywords
+            # Determine character compatibility
+            compatible_character = 'remy' if fbx_file.name.lower() in remy_animations else 'michelle'
+            
+            # Determine tags and icon based on motion name keywords
             tags = []
+            icon = '🎭'  # Default icon
             name_lower = motion_name.lower()
             
             if any(word in name_lower for word in ['walk', 'run', 'jump', 'crouch']):
                 tags.append('locomotion')
-            if any(word in name_lower for word in ['dance', 'capoeira', 'breakdance', 'hip hop']):
+                icon = '🚶'
+            if any(word in name_lower for word in ['salsa']):
                 tags.append('dance')
+                icon = '💃'
+            elif any(word in name_lower for word in ['swing', 'charleston']):
+                tags.append('dance')
+                icon = '🕺'
+            elif any(word in name_lower for word in ['hip hop', 'wave']):
+                tags.append('dance')
+                icon = '🎤'
+            elif any(word in name_lower for word in ['breakdance']):
+                tags.append('dance')
+                icon = '🤸'
+            elif any(word in name_lower for word in ['capoeira']):
+                tags.append('dance')
+                tags.append('combat')
+                icon = '🥋'
+            elif any(word in name_lower for word in ['dance']):
+                tags.append('dance')
+                icon = '💃'
             if any(word in name_lower for word in ['punch', 'kick', 'fight', 'combat']):
                 tags.append('combat')
+                icon = '👊'
             if any(word in name_lower for word in ['idle', 'stand', 'wait']):
                 tags.append('idle')
+                icon = '🧍'
             if 'freeze' in name_lower:
                 tags.append('freeze')
             if any(word in name_lower for word in ['acrobat', 'flip', 'spin']):
                 tags.append('acrobatic')
+                icon = '🤸'
             if 'urban' in name_lower or 'street' in name_lower:
                 tags.append('urban')
             
             # Generate motion metadata
-            motion_id = motion_name.lower().replace(' ', '_')
+            motion_id = motion_name.lower().replace(' ', '_').replace('-', '_')
+            
+            # URL path to serve this animation
+            url_path = f"/static/animations/{fbx_file.name}"
             
             motions.append({
                 "id": motion_id,
                 "name": motion_name,
                 "tags": tags if tags else ['other'],
+                "icon": icon,
+                "character": compatible_character,  # Character this animation is optimized for
                 "duration": 3.5 + (hash(motion_name) % 50) / 10,  # Pseudo-random 3.5-8.5s
                 "novelty": 0.5 + (hash(motion_name) % 40) / 100,  # Pseudo-random 0.5-0.9
-                "filepath": str(fbx_file)
+                "filepath": str(fbx_file),
+                "path": url_path,
+                "frames": 100,  # Will be updated when loaded
+                "fps": 30
             })
     
     # Fallback to sample data if no FBX files found
@@ -1112,6 +1326,424 @@ async def generate_transition_artifacts(request: ArtifactGenerateRequest):
         raise HTTPException(500, f"Artifact generation failed: {str(e)}")
 
 
+# =============================================================================
+# SPADE Hierarchical Motion Blending Endpoints
+# =============================================================================
+
+
+class SPADEBlendAPIRequest(BaseModel):
+    """API request for SPADE-enhanced motion blending."""
+    motion_paths: List[str] = Field(description="FBX file paths for motions")
+    weights: List[float] = Field(description="Blend weights for duration allocation")
+    style_labels: List[List[str]] = Field(
+        description="Style labels for each motion (e.g., [['capoeira'], ['breakdance']])"
+    )
+    hierarchy_level: int = Field(
+        default=1, ge=1, le=4,
+        description="Hierarchy level for SPADE conditioning (1=COARSE optimal)"
+    )
+    transition_frames: int = Field(default=30, ge=1, le=120, description="Frames for transition")
+    use_trainable_params: bool = Field(default=True, description="Use PyTorch trainable γ/β")
+    checkpoint_path: Optional[str] = Field(default=None, description="Path to pretrained weights")
+    # Trim parameters (optional - defaults to full clips)
+    start_frames: Optional[List[int]] = Field(
+        default=None, 
+        description="Start frame for each motion clip (0-indexed). If None, uses frame 0."
+    )
+    end_frames: Optional[List[int]] = Field(
+        default=None, 
+        description="End frame for each motion clip (inclusive). If None, uses last frame."
+    )
+
+
+@app.post("/api/motions/blend/spade")
+async def blend_with_spade(request: SPADEBlendAPIRequest):
+    """
+    Blend motions using SPADE (Spatially-Adaptive Denormalization) hierarchical conditioning.
+    
+    Based on research showing that applying SPADE conditioning at Level 1 (COARSE)
+    yields optimal FID/coverage trade-off by establishing overall motion structure
+    at the coarse level (Hips, Spine joints).
+    
+    Features:
+    - 4-level hierarchy: COARSE → MID → FINE → DETAIL
+    - Trainable γ/β parameters via PyTorch nn.Module
+    - Hash-based style embeddings (MVP), Gemini embeddings in Phase 2
+    - FID, coverage, diversity, smoothness metrics
+    - Verbose entry/exit logging for CI/CD
+    
+    Args:
+        motion_paths: List of FBX file paths (2-8 motions)
+        weights: Blend weights (must sum to 1.0)
+        style_labels: Style labels per motion for conditioning
+        hierarchy_level: SPADE level (1=COARSE recommended)
+        transition_frames: Frames for blend transition
+        use_trainable_params: Enable PyTorch trainable parameters
+        checkpoint_path: Optional pretrained weights path
+    
+    Returns:
+        SPADEBlendResponse with artifacts, metrics, and debug info
+    """
+    import time
+    import json
+    import uuid
+    from pathlib import Path
+    
+    correlation_id = str(uuid.uuid4())[:8]
+    logger.info(
+        f"[ENTRY] blend_with_spade [{correlation_id}]: "
+        f"motions={len(request.motion_paths)}, "
+        f"level={request.hierarchy_level}, "
+        f"transition={request.transition_frames}, "
+        f"trainable={request.use_trainable_params}"
+    )
+    
+    start_time = time.perf_counter()
+    
+    try:
+        # Import SPADE services
+        from ..services.spade_blend_service import (
+            get_spade_service,
+            SPADEBlendService,
+            TORCH_AVAILABLE,
+        )
+        from ..services.metrics import compute_all_metrics
+        from ..schemas.models import (
+            SPADEConfig,
+            SPADEMetrics,
+            SPADEBlendResponse,
+            HierarchyLevel,
+        )
+        from ..utils.fbx_parser import get_fbx_parser
+        import numpy as np
+        
+        # Validate inputs
+        if len(request.motion_paths) < 2:
+            raise HTTPException(400, "SPADE blending requires at least 2 motions")
+        
+        if len(request.motion_paths) > 8:
+            raise HTTPException(400, "SPADE blending supports maximum 8 motions")
+        
+        if len(request.motion_paths) != len(request.weights):
+            raise HTTPException(400, "motion_paths and weights must have same length")
+        
+        if len(request.motion_paths) != len(request.style_labels):
+            raise HTTPException(400, "motion_paths and style_labels must have same length")
+        
+        # Validate trim parameters if provided
+        if request.start_frames is not None:
+            if len(request.start_frames) != len(request.motion_paths):
+                raise HTTPException(400, "start_frames must match motion_paths length")
+        if request.end_frames is not None:
+            if len(request.end_frames) != len(request.motion_paths):
+                raise HTTPException(400, "end_frames must match motion_paths length")
+        
+        weight_sum = sum(request.weights)
+        if abs(weight_sum - 1.0) > 1e-6:
+            raise HTTPException(400, f"Weights must sum to 1.0, got {weight_sum}")
+        
+        # Map hierarchy level
+        level_map = {
+            1: HierarchyLevel.COARSE,
+            2: HierarchyLevel.MID,
+            3: HierarchyLevel.FINE,
+            4: HierarchyLevel.DETAIL,
+        }
+        spade_level = level_map[request.hierarchy_level]
+        
+        logger.info(
+            f"[PROGRESS] blend_with_spade [{correlation_id}]: "
+            f"Loading {len(request.motion_paths)} motions..."
+        )
+        
+        # Load motions from FBX files
+        fbx_parser = get_fbx_parser()
+        motions = []
+        motion_info = []
+        
+        for idx, path in enumerate(request.motion_paths):
+            # Handle static file paths
+            if path.startswith('/static/models/'):
+                fbx_path = Path(path.replace('/static/models/', 'data/mixamo_anims/fbx/'))
+            else:
+                fbx_path = Path(path)
+            
+            if not fbx_path.exists():
+                # Try alternate location
+                alt_path = Path("data/mixamo_anims/fbx") / fbx_path.name
+                if alt_path.exists():
+                    fbx_path = alt_path
+                else:
+                    logger.warning(f"Motion file not found: {fbx_path}, generating synthetic")
+                    # Generate synthetic motion for demo
+                    T = 120
+                    J = 24  # Mixamo skeleton
+                    D = 3
+                    positions = np.random.randn(T, J, D).astype(np.float32) * 0.5
+                    motions.append(positions)
+                    motion_info.append({
+                        "path": str(fbx_path),
+                        "name": fbx_path.stem,
+                        "frames": T,
+                        "joints": J,
+                        "style_labels": request.style_labels[idx],
+                        "synthetic": True,
+                        "trim_applied": False,
+                    })
+                    continue
+            
+            # Parse real FBX
+            positions, metadata = fbx_parser.parse_fbx(str(fbx_path))
+            original_frames = positions.shape[0]
+            
+            # Apply trim slicing if specified
+            start_frame = 0
+            end_frame = original_frames - 1
+            
+            if request.start_frames is not None and idx < len(request.start_frames):
+                start_frame = max(0, request.start_frames[idx])
+            if request.end_frames is not None and idx < len(request.end_frames):
+                end_frame = min(original_frames - 1, request.end_frames[idx])
+            
+            # Validate trim range
+            if start_frame > end_frame:
+                logger.warning(
+                    f"[WARNING] blend_with_spade [{correlation_id}]: "
+                    f"Invalid trim range for motion {idx}: start={start_frame} > end={end_frame}. "
+                    f"Using full clip."
+                )
+                start_frame = 0
+                end_frame = original_frames - 1
+            
+            # Slice motion by trim range (end_frame is inclusive)
+            trimmed_positions = positions[start_frame:end_frame + 1]
+            trim_applied = (start_frame != 0 or end_frame != original_frames - 1)
+            
+            logger.info(
+                f"[PROGRESS] blend_with_spade [{correlation_id}]: "
+                f"Motion {idx+1} trim: [{start_frame}:{end_frame+1}] of {original_frames} frames "
+                f"-> {trimmed_positions.shape[0]} frames (trim_applied={trim_applied})"
+            )
+            
+            motions.append(trimmed_positions)
+            motion_info.append({
+                "path": str(fbx_path),
+                "name": fbx_path.stem,
+                "frames": trimmed_positions.shape[0],
+                "original_frames": original_frames,
+                "joints": trimmed_positions.shape[1],
+                "style_labels": request.style_labels[idx],
+                "synthetic": False,
+                "trim_applied": trim_applied,
+                "start_frame": start_frame,
+                "end_frame": end_frame,
+            })
+            
+            logger.debug(
+                f"[PROGRESS] blend_with_spade [{correlation_id}]: "
+                f"Loaded motion {idx+1}: {fbx_path.stem} ({trimmed_positions.shape})"
+            )
+        
+        # Initialize SPADE service with config
+        config = SPADEConfig(
+            spade_level=spade_level,
+            input_dim=768,
+            style_channels=128,
+            motion_channels=motions[0].shape[2] if len(motions[0].shape) > 2 else 3,
+            transition_sharpness=5.0,
+        )
+        
+        spade_service = get_spade_service(config)
+        
+        # Load checkpoint if provided
+        checkpoint_loaded = False
+        if request.checkpoint_path:
+            checkpoint_loaded = spade_service.load_checkpoint(request.checkpoint_path)
+        
+        logger.info(
+            f"[PROGRESS] blend_with_spade [{correlation_id}]: "
+            f"SPADE service ready (PyTorch={TORCH_AVAILABLE}, "
+            f"device={spade_service.device}, "
+            f"params={spade_service.trainable_params_count:,})"
+        )
+        
+        # Perform SPADE blending (currently 2-motion support)
+        # TODO: Extend to N-motion sequential blending
+        if len(motions) == 2:
+            blended, timing = spade_service.blend(
+                motion_a=motions[0],
+                motion_b=motions[1],
+                style_labels_a=request.style_labels[0],
+                style_labels_b=request.style_labels[1],
+                weights=request.weights,
+                transition_frames=request.transition_frames,
+            )
+        else:
+            # Sequential pairwise blending for N motions
+            logger.info(f"[PROGRESS] blend_with_spade [{correlation_id}]: Sequential N-motion blend")
+            blended = motions[0]
+            total_weight = request.weights[0]
+            
+            for i in range(1, len(motions)):
+                relative_weight = request.weights[i] / (total_weight + request.weights[i])
+                blended, _ = spade_service.blend(
+                    motion_a=blended,
+                    motion_b=motions[i],
+                    style_labels_a=request.style_labels[i-1],
+                    style_labels_b=request.style_labels[i],
+                    weights=[1.0 - relative_weight, relative_weight],
+                    transition_frames=request.transition_frames,
+                )
+                total_weight += request.weights[i]
+            
+            timing = {"blend_time_ms": 0, "total_frames": blended.shape[0]}
+        
+        # Compute quality metrics
+        logger.info(f"[PROGRESS] blend_with_spade [{correlation_id}]: Computing metrics...")
+        
+        metrics_result = compute_all_metrics(
+            generated_motion=blended,
+            reference_motions=np.stack(motions) if len(motions) > 1 else None,
+            transition_start=timing.get("transition_start", 0),
+            transition_end=timing.get("transition_end", blended.shape[0]),
+            fps=30.0,
+        )
+        
+        # Create SPADE metrics
+        spade_metrics = SPADEMetrics(
+            fid_score=metrics_result.fid_score,
+            coverage=metrics_result.coverage,
+            diversity=metrics_result.diversity,
+            smoothness=metrics_result.smoothness,
+            foot_sliding=metrics_result.foot_sliding,
+            spade_level_used=request.hierarchy_level,
+            transition_quality=metrics_result.transition_quality,
+            blend_time_ms=timing.get("blend_time_ms", 0),
+            metrics_time_ms=metrics_result.computation_time_ms,
+        )
+        
+        # Generate blend ID and save artifacts
+        blend_id = f"spade-{uuid.uuid4().hex[:12]}"
+        artifacts_dir = Path("artifacts") / blend_id
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Save artifacts (frame-by-frame)
+        artifacts = []
+        transition_start = timing.get("transition_start", 0)
+        transition_end = timing.get("transition_end", blended.shape[0])
+        
+        for t in range(blended.shape[0]):
+            # Determine blend mode for this frame
+            if t < transition_start:
+                blend_mode = "motion_a"
+            elif t >= transition_end:
+                blend_mode = "motion_b"
+            else:
+                blend_mode = f"spade_level_{request.hierarchy_level}"
+            
+            artifact = {
+                "frame_index": t,
+                "omega": float(t - transition_start) / max(transition_end - transition_start, 1),
+                "positions": blended[t].tolist(),
+                "blend_mode": blend_mode,
+                "t_normalized": t / max(blended.shape[0] - 1, 1),
+            }
+            artifacts.append(artifact)
+            
+            # Save to file
+            with open(artifacts_dir / f"frame-{t:04d}.json", 'w') as f:
+                json.dump(artifact, f, indent=2)
+        
+        # Save metadata
+        metadata = {
+            "blend_id": blend_id,
+            "spade_level": request.hierarchy_level,
+            "spade_level_name": spade_level.value,
+            "source_motions": motion_info,
+            "weights": request.weights,
+            "transition_frames": request.transition_frames,
+            "total_frames": blended.shape[0],
+            "metrics": spade_metrics.model_dump(),
+            "pytorch_available": TORCH_AVAILABLE,
+            "device": spade_service.device,
+            "trainable_params": spade_service.trainable_params_count,
+            "checkpoint_loaded": checkpoint_loaded,
+        }
+        
+        with open(artifacts_dir / "metadata.json", 'w') as f:
+            json.dump(metadata, f, indent=2)
+        
+        # Compute joint dynamics for velocity/acceleration charts
+        from ..services.metrics import compute_joint_dynamics
+        
+        logger.info(f"[PROGRESS] blend_with_spade [{correlation_id}]: Computing joint dynamics...")
+        
+        joint_dynamics = compute_joint_dynamics(
+            motion=blended,
+            transition_start=transition_start,
+            transition_end=transition_end,
+            fps=30.0,
+        )
+        
+        # Save joint dynamics to artifacts
+        with open(artifacts_dir / "joint_dynamics.json", 'w') as f:
+            json.dump(joint_dynamics, f, indent=2)
+        
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        
+        logger.info(
+            f"[EXIT] blend_with_spade [{correlation_id}]: "
+            f"SUCCESS blend_id={blend_id}, "
+            f"frames={blended.shape[0]}, "
+            f"fid={spade_metrics.fid_score:.4f}, "
+            f"coverage={spade_metrics.coverage:.4f}, "
+            f"smoothness={spade_metrics.smoothness:.4f}, "
+            f"time={elapsed_ms:.2f}ms"
+        )
+        
+        # Build response
+        return {
+            "status": "success",
+            "blend_id": blend_id,
+            "spade_config": {
+                "level": request.hierarchy_level,
+                "level_name": spade_level.value,
+                "transition_frames": request.transition_frames,
+                "trainable_params": request.use_trainable_params,
+            },
+            "source_motions": motion_info,
+            "total_frames": blended.shape[0],
+            "output_fps": 30,
+            "artifact_directory": str(artifacts_dir),
+            "artifacts": artifacts[:10],  # Preview first 10 frames
+            "artifact_urls": [
+                f"/api/artifacts/{blend_id}/frame-{i:04d}.json"
+                for i in range(min(100, blended.shape[0]))
+            ],
+            "joint_dynamics": joint_dynamics,  # L2 velocity/acceleration data
+            "metrics": spade_metrics.model_dump(),
+            "debug": {
+                "pytorch_available": TORCH_AVAILABLE,
+                "device": spade_service.device,
+                "trainable_params_count": spade_service.trainable_params_count,
+                "checkpoint_loaded": checkpoint_loaded,
+                "total_time_ms": elapsed_ms,
+            },
+            "warnings": [] if TORCH_AVAILABLE else ["PyTorch unavailable, using numpy fallback"],
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        logger.error(
+            f"[EXIT] blend_with_spade [{correlation_id}]: "
+            f"FAILED after {elapsed_ms:.2f}ms - {e}",
+            exc_info=True
+        )
+        raise HTTPException(500, f"SPADE blend failed: {str(e)}")
+
+
 @app.get("/api/artifacts/{blend_id}/frame-{frame_num}.json")
 async def get_artifact_frame(blend_id: str, frame_num: str):
     """Retrieve a specific artifact frame."""
@@ -1146,6 +1778,93 @@ async def get_artifact_metadata(blend_id: str):
         raise
     except Exception as e:
         raise HTTPException(500, f"Failed to load metadata: {str(e)}")
+
+
+@app.get("/api/artifacts/{blend_id}/joint-dynamics")
+async def get_artifact_joint_dynamics(blend_id: str):
+    """
+    Retrieve joint dynamics data (L2 velocity and acceleration) for visualization.
+    
+    Returns per-joint velocity and acceleration time series for:
+    - Pelvis (root joint)
+    - LeftWrist, RightWrist (hands)
+    - LeftFoot, RightFoot (feet)
+    
+    Data format matches reference images with transition boundaries marked.
+    """
+    logger.info(f"[ENTRY] get_artifact_joint_dynamics: blend_id={blend_id}")
+    
+    try:
+        artifacts_dir = Path("artifacts") / blend_id
+        dynamics_file = artifacts_dir / "joint_dynamics.json"
+        
+        if not dynamics_file.exists():
+            logger.warning(f"[EXIT] get_artifact_joint_dynamics: File not found for {blend_id}")
+            raise HTTPException(404, f"Joint dynamics not found for: {blend_id}")
+        
+        with open(dynamics_file, 'r') as f:
+            dynamics = json.load(f)
+        
+        logger.info(
+            f"[EXIT] get_artifact_joint_dynamics: blend_id={blend_id}, "
+            f"joints={dynamics.get('joint_names', [])}, "
+            f"frames={dynamics.get('total_frames', 0)}"
+        )
+        return dynamics
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[EXIT] get_artifact_joint_dynamics: Failed - {e}", exc_info=True)
+        raise HTTPException(500, f"Failed to load joint dynamics: {str(e)}")
+
+
+@app.get("/api/artifacts/list")
+async def list_artifacts():
+    """
+    List all available blend artifacts in the database.
+    
+    Returns a list of artifact summaries with metadata for UI display.
+    """
+    logger.info("[ENTRY] list_artifacts")
+    
+    try:
+        artifacts_dir = Path("artifacts")
+        if not artifacts_dir.exists():
+            logger.info("[EXIT] list_artifacts: No artifacts directory")
+            return {"artifacts": [], "total": 0}
+        
+        artifacts = []
+        for blend_dir in sorted(artifacts_dir.iterdir(), reverse=True):
+            if blend_dir.is_dir() and blend_dir.name.startswith("spade-"):
+                metadata_file = blend_dir / "metadata.json"
+                dynamics_file = blend_dir / "joint_dynamics.json"
+                
+                if metadata_file.exists():
+                    with open(metadata_file, 'r') as f:
+                        metadata = json.load(f)
+                    
+                    # Count frame files
+                    frame_count = len(list(blend_dir.glob("frame-*.json")))
+                    
+                    artifacts.append({
+                        "blend_id": blend_dir.name,
+                        "spade_level": metadata.get("spade_level", 1),
+                        "spade_level_name": metadata.get("spade_level_name", "COARSE"),
+                        "total_frames": metadata.get("total_frames", frame_count),
+                        "source_motions": [m.get("name", "Unknown") for m in metadata.get("source_motions", [])],
+                        "weights": metadata.get("weights", []),
+                        "metrics": metadata.get("metrics", {}),
+                        "has_joint_dynamics": dynamics_file.exists(),
+                        "created_at": metadata_file.stat().st_mtime,
+                    })
+        
+        logger.info(f"[EXIT] list_artifacts: Found {len(artifacts)} artifacts")
+        return {"artifacts": artifacts, "total": len(artifacts)}
+        
+    except Exception as e:
+        logger.error(f"[EXIT] list_artifacts: Failed - {e}", exc_info=True)
+        raise HTTPException(500, f"Failed to list artifacts: {str(e)}")
 
 
 class IntelligentArtifactRequest(BaseModel):
@@ -2109,3 +2828,643 @@ async def tokenize_artifact(request: ArtifactTokenizationRequest):
             status_code=500,
             detail=f"Tokenization failed: {str(e)}"
         )
+
+
+# ============================================================================
+# API V2: Circle Wallets, x402 Payments, and Royalty Chain Endpoints
+# ============================================================================
+
+# Import new services (optional - may not be installed)
+try:
+    from ..services.circle_wallets import CircleWalletsService, CircleWalletsConfig
+    from ..services.x402_facilitator import X402FacilitatorService, X402FacilitatorConfig
+    from ..services.payment_automation import PaymentAutomationService, PaymentAutomationConfig
+    from ..services.gasless_executor import GaslessExecutor, GaslessExecutorConfig
+    from ..services.gemini_oracle_attestor import GeminiOracleAttestor, GeminiOracleConfig
+    from ..schemas.models import (
+        RoyaltyChain,
+        RoyaltyNode,
+        PaymentTriggerEvent,
+        RecursivePayoutResult,
+        CircleWallet,
+        CircleTransfer,
+        DerivativeDetectionResult,
+        ROYALTY_DECAY_FACTOR,
+        MAX_ROYALTY_CHAIN_DEPTH,
+        GAS_SPONSOR_REPLENISH_THRESHOLD,
+    )
+    HAS_V2_SERVICES = True
+except ImportError as e:
+    logger.warning(f"V2 services not available: {e}")
+    HAS_V2_SERVICES = False
+
+
+# V2 Service instances (lazy initialization)
+_circle_service: Optional[Any] = None
+_x402_service: Optional[Any] = None
+_payment_service: Optional[Any] = None
+_gasless_executor: Optional[Any] = None
+_oracle_attestor: Optional[Any] = None
+
+
+def get_circle_service():
+    """Get or create Circle Wallets service instance."""
+    global _circle_service
+    if _circle_service is None and HAS_V2_SERVICES:
+        config = CircleWalletsConfig()
+        _circle_service = CircleWalletsService(config)
+    return _circle_service
+
+
+def get_x402_service():
+    """Get or create x402 Facilitator service instance."""
+    global _x402_service
+    if _x402_service is None and HAS_V2_SERVICES:
+        config = X402FacilitatorConfig()
+        _x402_service = X402FacilitatorService(config)
+    return _x402_service
+
+
+def get_payment_service():
+    """Get or create Payment Automation service instance."""
+    global _payment_service
+    if _payment_service is None and HAS_V2_SERVICES:
+        config = PaymentAutomationConfig()
+        _payment_service = PaymentAutomationService(config)
+    return _payment_service
+
+
+def get_gasless_executor():
+    """Get or create Gasless Executor instance."""
+    global _gasless_executor
+    if _gasless_executor is None and HAS_V2_SERVICES:
+        config = GaslessExecutorConfig()
+        _gasless_executor = GaslessExecutor(config)
+    return _gasless_executor
+
+
+def get_oracle_attestor():
+    """Get or create Gemini Oracle Attestor instance."""
+    global _oracle_attestor
+    if _oracle_attestor is None and HAS_V2_SERVICES:
+        config = GeminiOracleConfig()
+        _oracle_attestor = GeminiOracleAttestor(config)
+    return _oracle_attestor
+
+
+# ---- Request/Response Models for V2 API ----
+
+class CreateWalletRequest(BaseModel):
+    """Request to create a new Circle wallet."""
+    idempotency_key: Optional[str] = None
+    wallet_set_id: Optional[str] = None
+
+
+class TransferUsdcRequest(BaseModel):
+    """Request to transfer USDC between wallets."""
+    from_wallet_id: str
+    to_address: str = Field(pattern=r"^0x[a-fA-F0-9]{40}$")
+    amount_usdc: str
+    idempotency_key: Optional[str] = None
+
+
+class X402SettlementRequest(BaseModel):
+    """Request to settle an x402 payment."""
+    x402_header: str
+    expected_amount: Optional[str] = None
+
+
+class RoyaltyPreviewRequest(BaseModel):
+    """Request to preview royalty distribution."""
+    motion_id: str
+    base_amount: float = Field(ge=0.01)
+    parent_motion_ids: List[str] = []
+
+
+class DerivativeCheckRequest(BaseModel):
+    """Request to check for derivative content."""
+    motion_data_uri: str
+    threshold: float = Field(default=0.85, ge=0.0, le=1.0)
+
+
+class GaslessTransferRequest(BaseModel):
+    """Request to execute a gasless USDC transfer."""
+    to_address: str = Field(pattern=r"^0x[a-fA-F0-9]{40}$")
+    amount_usdc: float = Field(ge=0.01)
+
+
+# ---- V2 API Endpoints ----
+
+@app.post("/api/v2/wallets/create")
+async def create_circle_wallet(
+    request: CreateWalletRequest,
+    x_correlation_id: Optional[str] = Header(None, alias="X-Correlation-ID"),
+):
+    """
+    Create a new Circle Programmable Wallet.
+    
+    Creates a developer-controlled wallet on the Arc testnet (or mainnet if enabled).
+    """
+    if not HAS_V2_SERVICES:
+        raise HTTPException(status_code=501, detail="V2 services not available")
+    
+    if x_correlation_id:
+        set_correlation_id(x_correlation_id)
+    
+    logger.info("[API] POST /api/v2/wallets/create")
+    
+    try:
+        service = get_circle_service()
+        wallet = await service.create_developer_wallet(
+            idempotency_key=request.idempotency_key,
+            wallet_set_id=request.wallet_set_id,
+        )
+        
+        return {
+            "success": True,
+            "wallet": wallet.model_dump() if hasattr(wallet, 'model_dump') else wallet,
+        }
+    except Exception as e:
+        logger.error(f"Wallet creation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v2/wallets/{wallet_id}/balance")
+async def get_wallet_balance(
+    wallet_id: str,
+    x_correlation_id: Optional[str] = Header(None, alias="X-Correlation-ID"),
+):
+    """
+    Get the USDC balance of a Circle wallet.
+    """
+    if not HAS_V2_SERVICES:
+        raise HTTPException(status_code=501, detail="V2 services not available")
+    
+    if x_correlation_id:
+        set_correlation_id(x_correlation_id)
+    
+    logger.info(f"[API] GET /api/v2/wallets/{wallet_id}/balance")
+    
+    try:
+        service = get_circle_service()
+        balance = await service.get_wallet_balance(wallet_id)
+        
+        return {
+            "wallet_id": wallet_id,
+            "balance": balance.model_dump() if hasattr(balance, 'model_dump') else balance,
+        }
+    except Exception as e:
+        logger.error(f"Balance fetch failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v2/wallets/{wallet_id}/transactions")
+async def get_wallet_transactions(
+    wallet_id: str,
+    limit: int = 20,
+    x_correlation_id: Optional[str] = Header(None, alias="X-Correlation-ID"),
+):
+    """
+    Get recent transactions for a Circle wallet.
+    """
+    if not HAS_V2_SERVICES:
+        raise HTTPException(status_code=501, detail="V2 services not available")
+    
+    if x_correlation_id:
+        set_correlation_id(x_correlation_id)
+    
+    logger.info(f"[API] GET /api/v2/wallets/{wallet_id}/transactions")
+    
+    try:
+        service = get_circle_service()
+        # Get transaction history
+        # Note: This would need to be implemented in the CircleWalletsService
+        return {
+            "wallet_id": wallet_id,
+            "transactions": [],
+            "message": "Transaction history not yet implemented",
+        }
+    except Exception as e:
+        logger.error(f"Transaction fetch failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v2/wallets/transfer")
+async def transfer_usdc(
+    request: TransferUsdcRequest,
+    x_correlation_id: Optional[str] = Header(None, alias="X-Correlation-ID"),
+):
+    """
+    Transfer USDC between wallets.
+    """
+    if not HAS_V2_SERVICES:
+        raise HTTPException(status_code=501, detail="V2 services not available")
+    
+    if x_correlation_id:
+        set_correlation_id(x_correlation_id)
+    
+    logger.info(f"[API] POST /api/v2/wallets/transfer: {request.amount_usdc} USDC")
+    
+    try:
+        service = get_circle_service()
+        transfer = await service.transfer_usdc(
+            from_wallet_id=request.from_wallet_id,
+            to_address=request.to_address,
+            amount_usdc=request.amount_usdc,
+            idempotency_key=request.idempotency_key,
+        )
+        
+        return {
+            "success": True,
+            "transfer": transfer.model_dump() if hasattr(transfer, 'model_dump') else transfer,
+        }
+    except Exception as e:
+        logger.error(f"Transfer failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v2/payments/verify")
+async def verify_x402_payment(
+    x_402_payment: str = Header(..., alias="X-402-Payment"),
+    expected_amount: Optional[str] = Header(None, alias="X-Expected-Amount"),
+    x_correlation_id: Optional[str] = Header(None, alias="X-Correlation-ID"),
+):
+    """
+    Verify an x402 payment proof from HTTP header.
+    
+    Used for pay-per-request API access and motion content purchases.
+    """
+    if not HAS_V2_SERVICES:
+        raise HTTPException(status_code=501, detail="V2 services not available")
+    
+    if x_correlation_id:
+        set_correlation_id(x_correlation_id)
+    
+    logger.info("[API] POST /api/v2/payments/verify")
+    
+    try:
+        service = get_x402_service()
+        result = await service.verify_payment(
+            x402_header=x_402_payment,
+            expected_amount=expected_amount,
+        )
+        
+        if not result.valid:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "payment_required",
+                    "message": result.error_message or "Invalid payment proof",
+                    "receipt_id": result.receipt_id,
+                },
+            )
+        
+        return {
+            "valid": True,
+            "receipt_id": result.receipt_id,
+            "amount": result.amount,
+            "timestamp": result.timestamp,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Payment verification failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v2/payments/settle")
+async def settle_x402_payment(
+    request: X402SettlementRequest,
+    x_correlation_id: Optional[str] = Header(None, alias="X-Correlation-ID"),
+):
+    """
+    Settle an x402 payment and execute the USDC transfer on-chain.
+    """
+    if not HAS_V2_SERVICES:
+        raise HTTPException(status_code=501, detail="V2 services not available")
+    
+    if x_correlation_id:
+        set_correlation_id(x_correlation_id)
+    
+    logger.info("[API] POST /api/v2/payments/settle")
+    
+    try:
+        service = get_x402_service()
+        result = await service.settle_payment(
+            x402_header=request.x402_header,
+        )
+        
+        if not result.success:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "settlement_failed",
+                    "message": result.error_message,
+                    "tx_hash": result.tx_hash,
+                },
+            )
+        
+        return {
+            "success": True,
+            "tx_hash": result.tx_hash,
+            "chain": result.chain,
+            "amount": result.amount,
+            "timestamp": result.timestamp,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Payment settlement failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v2/payments/supported")
+async def get_supported_payment_methods():
+    """
+    Get supported x402 payment methods.
+    """
+    if not HAS_V2_SERVICES:
+        raise HTTPException(status_code=501, detail="V2 services not available")
+    
+    try:
+        service = get_x402_service()
+        methods = await service.get_supported_methods()
+        
+        return {
+            "methods": [m.model_dump() if hasattr(m, 'model_dump') else m for m in methods],
+        }
+    except Exception as e:
+        logger.error(f"Failed to get payment methods: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v2/royalties/preview")
+async def preview_royalty_distribution(
+    request: RoyaltyPreviewRequest,
+    x_correlation_id: Optional[str] = Header(None, alias="X-Correlation-ID"),
+):
+    """
+    Preview royalty distribution for a motion with derivative chain.
+    
+    Calculates the recursive payout distribution using:
+    - ROYALTY_DECAY_FACTOR: 50% per level
+    - MAX_ROYALTY_CHAIN_DEPTH: 10 levels
+    """
+    if not HAS_V2_SERVICES:
+        raise HTTPException(status_code=501, detail="V2 services not available")
+    
+    if x_correlation_id:
+        set_correlation_id(x_correlation_id)
+    
+    logger.info(f"[API] POST /api/v2/royalties/preview: {request.base_amount} USDC")
+    
+    try:
+        service = get_payment_service()
+        
+        # Build a simple royalty chain for preview
+        # In production, this would fetch from the registry
+        nodes = []
+        for i, parent_id in enumerate(request.parent_motion_ids[:MAX_ROYALTY_CHAIN_DEPTH]):
+            royalty_rate = 0.10 * (ROYALTY_DECAY_FACTOR ** i)  # 10% base, decayed
+            nodes.append({
+                "motion_id": parent_id,
+                "wallet_address": f"0x{'0' * 39}{i + 1}",  # Placeholder
+                "royalty_percentage": royalty_rate,
+                "depth": i,
+            })
+        
+        # Calculate payouts
+        payouts = []
+        total_royalties = 0
+        
+        for i, node in enumerate(nodes):
+            amount = request.base_amount * node["royalty_percentage"]
+            if amount >= 0.01:  # Minimum $0.01
+                payouts.append({
+                    "motion_id": node["motion_id"],
+                    "wallet_address": node["wallet_address"],
+                    "amount_usdc": round(amount, 6),
+                    "depth": i,
+                    "percentage": round(node["royalty_percentage"] * 100, 2),
+                })
+                total_royalties += amount
+        
+        creator_amount = request.base_amount - total_royalties
+        
+        return {
+            "motion_id": request.motion_id,
+            "base_amount": request.base_amount,
+            "royalty_payouts": payouts,
+            "total_royalties": round(total_royalties, 6),
+            "creator_amount": round(creator_amount, 6),
+            "chain_depth": len(payouts),
+            "decay_factor": ROYALTY_DECAY_FACTOR,
+            "max_depth": MAX_ROYALTY_CHAIN_DEPTH,
+        }
+    except Exception as e:
+        logger.error(f"Royalty preview failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v2/derivatives/check")
+async def check_derivative_content(
+    request: DerivativeCheckRequest,
+    x_correlation_id: Optional[str] = Header(None, alias="X-Correlation-ID"),
+):
+    """
+    Check if motion content is a derivative of existing registered motions.
+    
+    Uses KNN similarity search to find potential parent motions.
+    """
+    if not HAS_V2_SERVICES:
+        raise HTTPException(status_code=501, detail="V2 services not available")
+    
+    if x_correlation_id:
+        set_correlation_id(x_correlation_id)
+    
+    logger.info("[API] POST /api/v2/derivatives/check")
+    
+    try:
+        attestor = get_oracle_attestor()
+        result = await attestor.detect_derivative(
+            motion_data_uri=request.motion_data_uri,
+            threshold=request.threshold,
+        )
+        
+        return {
+            "is_derivative": result.is_derivative,
+            "similarity_score": result.similarity_score,
+            "parent_motion_id": result.parent_motion_id,
+            "parent_creator": result.parent_creator,
+            "recommended_royalty": result.recommended_royalty,
+            "confidence": result.confidence,
+        }
+    except Exception as e:
+        logger.error(f"Derivative check failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v2/gasless/transfer")
+async def execute_gasless_transfer(
+    request: GaslessTransferRequest,
+    x_correlation_id: Optional[str] = Header(None, alias="X-Correlation-ID"),
+):
+    """
+    Execute a gasless USDC transfer via EIP-7702.
+    
+    Gas is sponsored by the platform gas budget (40% replenish threshold).
+    """
+    if not HAS_V2_SERVICES:
+        raise HTTPException(status_code=501, detail="V2 services not available")
+    
+    if x_correlation_id:
+        set_correlation_id(x_correlation_id)
+    
+    logger.info(f"[API] POST /api/v2/gasless/transfer: {request.amount_usdc} USDC")
+    
+    try:
+        executor = get_gasless_executor()
+        result = await executor.send_gasless_tx(
+            to_address=request.to_address,
+            amount_usdc=request.amount_usdc,
+        )
+        
+        return {
+            "success": result.success,
+            "tx_hash": result.tx_hash,
+            "gas_sponsored": result.gas_sponsored,
+            "gas_cost_usdc": result.gas_cost_usdc,
+        }
+    except Exception as e:
+        logger.error(f"Gasless transfer failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v2/gasless/budget")
+async def get_gas_sponsor_budget(
+    x_correlation_id: Optional[str] = Header(None, alias="X-Correlation-ID"),
+):
+    """
+    Get the current gas sponsor budget status.
+    
+    Returns current balance and whether replenishment is needed (40% threshold).
+    """
+    if not HAS_V2_SERVICES:
+        raise HTTPException(status_code=501, detail="V2 services not available")
+    
+    if x_correlation_id:
+        set_correlation_id(x_correlation_id)
+    
+    logger.info("[API] GET /api/v2/gasless/budget")
+    
+    try:
+        executor = get_gasless_executor()
+        balance = await executor.get_gas_budget_balance()
+        threshold = executor.config.initial_budget * GAS_SPONSOR_REPLENISH_THRESHOLD
+        
+        return {
+            "current_balance": balance,
+            "initial_budget": executor.config.initial_budget,
+            "threshold": threshold,
+            "threshold_percentage": GAS_SPONSOR_REPLENISH_THRESHOLD * 100,
+            "needs_replenishment": balance < threshold,
+        }
+    except Exception as e:
+        logger.error(f"Failed to get gas budget: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v2/config/constants")
+async def get_global_constants():
+    """
+    Get global configuration constants for the payment system.
+    """
+    if not HAS_V2_SERVICES:
+        return {
+            "royalty_decay_factor": 0.5,
+            "max_royalty_chain_depth": 10,
+            "gas_sponsor_replenish_threshold": 0.40,
+            "v2_services_available": False,
+        }
+    
+    return {
+        "royalty_decay_factor": ROYALTY_DECAY_FACTOR,
+        "max_royalty_chain_depth": MAX_ROYALTY_CHAIN_DEPTH,
+        "gas_sponsor_replenish_threshold": GAS_SPONSOR_REPLENISH_THRESHOLD,
+        "v2_services_available": True,
+    }
+
+
+# ========== Marketplace Endpoints ==========
+
+class BlendRegistrationRequest(BaseModel):
+    """Request to register a new blend strip."""
+    motion_id: str
+    creator: str
+    metadata: Dict[str, Any]
+    price_usdc: float
+    uniqueness_score: int
+
+
+@app.get("/api/v2/marketplace/blends")
+async def get_marketplace_blends(
+    limit: int = 50,
+    offset: int = 0,
+    x_correlation_id: Optional[str] = Header(None, alias="X-Correlation-ID"),
+):
+    """
+    Get blend strips available in the marketplace.
+    
+    Returns a list of minted blend strips with metadata, pricing, and uniqueness scores.
+    """
+    if x_correlation_id:
+        set_correlation_id(x_correlation_id)
+    
+    logger.info(f"[API] GET /api/v2/marketplace/blends limit={limit} offset={offset}")
+    
+    # In production, this would query a database of registered blends
+    # For now, return sample data for UI demonstration
+    sample_blends = []
+    
+    return {
+        "blends": sample_blends,
+        "total": len(sample_blends),
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@app.post("/api/v2/motions/register")
+async def register_blend_motion(
+    request: BlendRegistrationRequest,
+    x_correlation_id: Optional[str] = Header(None, alias="X-Correlation-ID"),
+):
+    """
+    Register a new blend strip motion on Arc Network.
+    
+    Mints the blend as an NFT with royalty chain configuration.
+    """
+    if x_correlation_id:
+        set_correlation_id(x_correlation_id)
+    
+    logger.info(f"[API] POST /api/v2/motions/register: {request.motion_id}")
+    
+    try:
+        # Generate transaction hash (in production, this would be the actual mint tx)
+        import hashlib
+        tx_data = f"{request.motion_id}{request.creator}{request.price_usdc}".encode()
+        tx_hash = "0x" + hashlib.sha256(tx_data).hexdigest()
+        
+        return {
+            "success": True,
+            "motion_id": request.motion_id,
+            "tx_hash": tx_hash,
+            "price_usdc": request.price_usdc,
+            "uniqueness_score": request.uniqueness_score,
+            "creator": request.creator,
+            "chain": "arc-testnet",
+            "chain_id": 1301,
+        }
+    except Exception as e:
+        logger.error(f"Motion registration failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

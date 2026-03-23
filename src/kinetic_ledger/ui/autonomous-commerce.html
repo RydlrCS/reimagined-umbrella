@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kinetic Ledger | Autonomous Motion Commerce on Arc</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --arc-primary: #7B3FE4;
+            --arc-secondary: #00D4AA;
+            --arc-accent: #FF6B35;
+            --arc-dark: #0A0B0D;
+            --arc-darker: #050506;
+            --arc-surface: #12141A;
+            --arc-surface-light: #1A1D24;
+            --arc-border: #2A2D35;
+            --arc-text: #FFFFFF;
+            --arc-text-muted: #8B8D97;
+            --usdc-blue: #2775CA;
+            --success: #00D4AA;
+            --warning: #FFB800;
+            --danger: #FF4757;
+            --polygon-gradient: linear-gradient(135deg, #7B3FE4 0%, #00D4AA 50%, #FF6B35 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--arc-darker);
+            color: var(--arc-text);
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 60px;
+            background: rgba(10, 11, 13, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--arc-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 1000;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 20px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--polygon-gradient);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--arc-surface);
+            padding: 4px;
+            border-radius: 12px;
+        }
+
+        .nav-tab {
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
+            color: var(--arc-text-muted);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .nav-tab:hover { color: var(--arc-text); }
+        .nav-tab.active { background: var(--arc-primary); color: white; }
+
+        .wallet-status {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .network-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--arc-surface);
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        .network-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .wallet-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: var(--arc-primary);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .wallet-btn:hover {
+            background: #8B4FE4;
+            transform: translateY(-1px);
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            padding-top: 60px;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            background: var(--arc-surface);
+            border-right: 1px solid var(--arc-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--arc-border); }
+
+        .balance-card {
+            background: var(--polygon-gradient);
+            border-radius: 16px;
+            padding: 24px;
+            color: white;
+        }
+
+        .balance-label { font-size: 13px; opacity: 0.9; margin-bottom: 8px; }
+
+        .balance-amount {
+            font-size: 32px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .balance-change {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            margin-top: 8px;
+            opacity: 0.9;
+        }
+
+        .balance-change.positive { color: #00FF88; }
+
+        /* Live Stream Panel */
+        .live-stream-panel { flex: 1; overflow-y: auto; padding: 16px; }
+
+        .stream-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .stream-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: rgba(255, 71, 87, 0.2);
+            border: 1px solid var(--danger);
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--danger);
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--danger);
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+
+        /* Transaction Card */
+        .tx-card {
+            background: var(--arc-surface-light);
+            border: 1px solid var(--arc-border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            animation: slideIn 0.3s ease;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tx-card:hover {
+            border-color: var(--arc-primary);
+            transform: translateX(4px);
+        }
+
+        .tx-card.confirmed { border-left: 3px solid var(--success); }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .tx-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .tx-type { display: flex; align-items: center; gap: 8px; }
+
+        .tx-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .tx-icon.buy { background: rgba(0, 212, 170, 0.2); color: var(--success); }
+        .tx-icon.sell { background: rgba(123, 63, 228, 0.2); color: var(--arc-primary); }
+        .tx-icon.mint { background: rgba(255, 107, 53, 0.2); color: var(--arc-accent); }
+
+        .tx-amount { font-weight: 600; color: var(--success); }
+
+        .tx-hash {
+            font-family: 'Monaco', monospace;
+            font-size: 11px;
+            color: var(--arc-text-muted);
+            background: var(--arc-dark);
+            padding: 4px 8px;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+
+        .tx-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--arc-text-muted);
+            margin-top: 8px;
+        }
+
+        /* Main Content */
+        .content-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* Generator Panel */
+        .generator-panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .generator-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--arc-border);
+        }
+
+        .generator-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+        .generator-subtitle { color: var(--arc-text-muted); font-size: 14px; }
+
+        .generator-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .preview-3d {
+            position: relative;
+            background: var(--arc-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #blend-canvas { width: 100%; height: 100%; }
+
+        /* Timeline Editor */
+        .timeline-editor {
+            padding: 24px;
+            border-bottom: 1px solid var(--arc-border);
+            background: var(--arc-surface);
+        }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .timeline-title { font-weight: 600; }
+
+        .add-segment-btn {
+            padding: 8px 16px;
+            background: var(--arc-primary);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .timeline-track {
+            display: flex;
+            gap: 4px;
+            background: var(--arc-dark);
+            padding: 12px;
+            border-radius: 8px;
+            min-height: 80px;
+        }
+
+        .segment-block {
+            position: relative;
+            min-width: 100px;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: move;
+            transition: all 0.2s;
+        }
+
+        .segment-block:hover { transform: scale(1.02); }
+        .segment-block .name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+        .segment-block .frames { font-size: 10px; opacity: 0.8; }
+
+        .segment-block .remove {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 16px;
+            height: 16px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        /* Config Panel */
+        .config-panel {
+            background: var(--arc-surface);
+            border-left: 1px solid var(--arc-border);
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .config-section { margin-bottom: 24px; }
+
+        .config-title {
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .config-field { margin-bottom: 16px; }
+
+        .config-label {
+            display: block;
+            font-size: 13px;
+            color: var(--arc-text-muted);
+            margin-bottom: 8px;
+        }
+
+        .config-input {
+            width: 100%;
+            padding: 12px;
+            background: var(--arc-dark);
+            border: 1px solid var(--arc-border);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .config-input:focus { outline: none; border-color: var(--arc-primary); }
+
+        .config-select {
+            width: 100%;
+            padding: 12px;
+            background: var(--arc-dark);
+            border: 1px solid var(--arc-border);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .range-slider { width: 100%; margin-top: 8px; }
+
+        .uniqueness-meter {
+            background: var(--arc-dark);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .uniqueness-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .uniqueness-score {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .uniqueness-bar {
+            height: 8px;
+            background: var(--arc-border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .uniqueness-fill {
+            height: 100%;
+            background: var(--polygon-gradient);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .uniqueness-factors {
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--arc-text-muted);
+        }
+
+        .factor-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+
+        /* Pricing Preview */
+        .pricing-preview {
+            background: var(--polygon-gradient);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .pricing-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .pricing-row.total {
+            font-size: 18px;
+            font-weight: 700;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            margin-top: 12px;
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 16px;
+            background: white;
+            border: none;
+            border-radius: 12px;
+            color: var(--arc-dark);
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* Polygon Visualization */
+        .polygon-viz {
+            position: fixed;
+            bottom: 0;
+            left: 320px;
+            right: 0;
+            height: 200px;
+            background: var(--arc-surface);
+            border-top: 1px solid var(--arc-border);
+            display: flex;
+            z-index: 100;
+        }
+
+        .polygon-canvas { flex: 1; position: relative; }
+
+        .polygon-metrics {
+            width: 300px;
+            padding: 16px;
+            border-left: 1px solid var(--arc-border);
+            overflow-y: auto;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--arc-border);
+            font-size: 13px;
+        }
+
+        .metric-label { color: var(--arc-text-muted); }
+        .metric-value { font-family: 'Monaco', monospace; font-weight: 600; }
+        .metric-value.highlight { color: var(--arc-primary); }
+
+        /* Hidden panels */
+        .tab-content { display: none; flex: 1; overflow: hidden; }
+        .tab-content.active { display: flex; flex-direction: column; }
+
+        /* Marketplace Grid */
+        .marketplace-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .blend-card {
+            background: var(--arc-surface);
+            border: 1px solid var(--arc-border);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .blend-card:hover {
+            border-color: var(--arc-primary);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(123, 63, 228, 0.2);
+        }
+
+        .blend-preview {
+            position: relative;
+            height: 200px;
+            background: var(--arc-dark);
+            overflow: hidden;
+        }
+
+        .blend-strip-viz {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 40px;
+            display: flex;
+            gap: 2px;
+            padding: 8px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+        }
+
+        .frame-segment {
+            flex: 1;
+            border-radius: 4px;
+        }
+
+        .blend-info { padding: 16px; }
+
+        .blend-title {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .uniqueness-badge {
+            padding: 2px 8px;
+            background: var(--success);
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .blend-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--arc-text-muted);
+            margin-bottom: 12px;
+        }
+
+        .blend-meta span { display: flex; align-items: center; gap: 4px; }
+
+        .blend-hash {
+            font-family: 'Monaco', monospace;
+            font-size: 10px;
+            color: var(--arc-text-muted);
+            background: var(--arc-dark);
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            word-break: break-all;
+        }
+
+        .blend-price {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .price-tag { display: flex; align-items: center; gap: 6px; }
+        .price-value { font-size: 20px; font-weight: 700; color: var(--usdc-blue); }
+
+        .buy-btn {
+            padding: 10px 20px;
+            background: var(--arc-primary);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .buy-btn:hover { background: #8B4FE4; transform: scale(1.05); }
+        .buy-btn:disabled { background: var(--arc-border); cursor: not-allowed; transform: none; }
+
+        /* Wallet Panel */
+        .wallet-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .wallet-section {
+            background: var(--arc-surface);
+            border: 1px solid var(--arc-border);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .wallet-section-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .circle-wallet-card {
+            background: linear-gradient(135deg, #2775CA 0%, #1a5a9e 100%);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .circle-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        .wallet-address {
+            font-family: 'Monaco', monospace;
+            font-size: 12px;
+            background: rgba(0,0,0,0.2);
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+
+        .wallet-actions { display: flex; gap: 12px; }
+
+        .wallet-action-btn {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .wallet-action-btn:hover { background: rgba(255,255,255,0.2); }
+
+        .royalty-chain {
+            background: var(--arc-dark);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .chain-node {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--arc-surface-light);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .chain-node .depth {
+            width: 24px;
+            height: 24px;
+            background: var(--arc-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .chain-node .info { flex: 1; }
+        .chain-node .share { font-weight: 600; color: var(--success); }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 24px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .toast {
+            padding: 16px 20px;
+            background: var(--arc-surface);
+            border: 1px solid var(--arc-border);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideInRight 0.3s ease;
+            min-width: 300px;
+        }
+
+        .toast.success { border-left: 3px solid var(--success); }
+        .toast.error { border-left: 3px solid var(--danger); }
+        .toast.info { border-left: 3px solid var(--arc-primary); }
+
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">⚡</div>
+            <span>Kinetic Ledger</span>
+        </div>
+        
+        <nav class="nav-tabs">
+            <button class="nav-tab" data-tab="marketplace">Marketplace</button>
+            <button class="nav-tab active" data-tab="generator">Generator</button>
+            <button class="nav-tab" data-tab="wallet">Wallet</button>
+        </nav>
+        
+        <div class="wallet-status">
+            <div class="network-badge">
+                <span class="network-dot"></span>
+                <span>Arc Testnet</span>
+            </div>
+            <button class="wallet-btn" id="connectWalletBtn">
+                <i class="fas fa-wallet"></i>
+                <span id="walletBtnText">Connect Wallet</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar - Live Transaction Stream -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="balance-card">
+                    <div class="balance-label">Total Balance</div>
+                    <div class="balance-amount">
+                        <span id="totalBalance">0.00</span>
+                        <span style="font-size: 16px; opacity: 0.8;">USDC</span>
+                    </div>
+                    <div class="balance-change positive" id="balanceChange">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>+$0.00 today</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="live-stream-panel">
+                <div class="stream-header">
+                    <div class="stream-title">
+                        <i class="fas fa-stream"></i>
+                        <span>Live Transactions</span>
+                    </div>
+                    <div class="live-indicator">
+                        <span class="live-dot"></span>
+                        <span>LIVE</span>
+                    </div>
+                </div>
+                <div id="txStream"></div>
+            </div>
+        </aside>
+
+        <!-- Content Area -->
+        <main class="content-area">
+            <!-- Marketplace Tab -->
+            <div class="tab-content" data-tab="marketplace">
+                <div class="marketplace-grid" id="marketplaceGrid"></div>
+            </div>
+
+            <!-- Generator Tab -->
+            <div class="tab-content active" data-tab="generator">
+                <div class="generator-panel">
+                    <div class="generator-header">
+                        <h1 class="generator-title">🎨 Blend Strip Generator</h1>
+                        <p class="generator-subtitle">Create unique motion blends with verifiable on-chain provenance</p>
+                    </div>
+                    
+                    <div class="generator-content">
+                        <div class="preview-3d">
+                            <canvas id="blend-canvas"></canvas>
+                        </div>
+                        
+                        <div class="config-panel">
+                            <div class="config-section">
+                                <div class="config-title">
+                                    <i class="fas fa-fingerprint"></i>
+                                    Uniqueness Score
+                                </div>
+                                
+                                <div class="uniqueness-meter">
+                                    <div class="uniqueness-header">
+                                        <span>Blend Uniqueness</span>
+                                        <span class="uniqueness-score" id="uniquenessScore">0%</span>
+                                    </div>
+                                    <div class="uniqueness-bar">
+                                        <div class="uniqueness-fill" id="uniquenessFill" style="width: 0%"></div>
+                                    </div>
+                                    <div class="uniqueness-factors">
+                                        <div class="factor-item">
+                                            <span>Frame Range Diversity</span>
+                                            <span id="frameRangeScore">0%</span>
+                                        </div>
+                                        <div class="factor-item">
+                                            <span>Motion Combination</span>
+                                            <span id="motionComboScore">0%</span>
+                                        </div>
+                                        <div class="factor-item">
+                                            <span>Timing Uniqueness</span>
+                                            <span id="timingScore">0%</span>
+                                        </div>
+                                        <div class="factor-item">
+                                            <span>Blend Curve</span>
+                                            <span id="blendCurveScore">0%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="config-section">
+                                <div class="config-title">
+                                    <i class="fas fa-layer-group"></i>
+                                    Motion Segments
+                                </div>
+                                
+                                <div class="config-field">
+                                    <label class="config-label">Add Motion</label>
+                                    <select class="config-select" id="motionSelect">
+                                        <option value="">Select a motion...</option>
+                                        <option value="capoeira">Capoeira</option>
+                                        <option value="breakdance">Breakdance</option>
+                                        <option value="hip-hop">Hip Hop</option>
+                                        <option value="robot">Robot</option>
+                                        <option value="salsa">Salsa</option>
+                                        <option value="kick">Kick</option>
+                                        <option value="punch">Punch</option>
+                                        <option value="idle">Idle</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="config-field">
+                                    <label class="config-label">Frame Range</label>
+                                    <div style="display: flex; gap: 12px;">
+                                        <input type="number" class="config-input" id="frameStart" placeholder="Start" value="0" min="0">
+                                        <input type="number" class="config-input" id="frameEnd" placeholder="End" value="30" min="1">
+                                    </div>
+                                </div>
+                                
+                                <button class="add-segment-btn" id="addSegmentBtn">
+                                    <i class="fas fa-plus"></i> Add Segment
+                                </button>
+                            </div>
+                            
+                            <div class="config-section">
+                                <div class="config-title">
+                                    <i class="fas fa-sliders-h"></i>
+                                    Blend Settings
+                                </div>
+                                
+                                <div class="config-field">
+                                    <label class="config-label">Blend Curve</label>
+                                    <select class="config-select" id="blendCurve">
+                                        <option value="smoothstep">Smoothstep</option>
+                                        <option value="linear">Linear</option>
+                                        <option value="ease-in">Ease In</option>
+                                        <option value="ease-out">Ease Out</option>
+                                        <option value="bounce">Bounce</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="config-field">
+                                    <label class="config-label">Transition Duration (frames)</label>
+                                    <input type="range" class="range-slider" id="transitionDuration" min="5" max="30" value="15">
+                                    <span id="transitionValue">15</span>
+                                </div>
+                            </div>
+                            
+                            <div class="config-section">
+                                <div class="config-title">
+                                    <i class="fas fa-tag"></i>
+                                    Pricing
+                                </div>
+                                
+                                <div class="pricing-preview">
+                                    <div class="pricing-row">
+                                        <span>Base Price</span>
+                                        <span>5.00 USDC</span>
+                                    </div>
+                                    <div class="pricing-row">
+                                        <span>Uniqueness Bonus</span>
+                                        <span id="uniquenessBonus">+0.00 USDC</span>
+                                    </div>
+                                    <div class="pricing-row">
+                                        <span>Arc Gas Fee</span>
+                                        <span>~0.01 USDC</span>
+                                    </div>
+                                    <div class="pricing-row total">
+                                        <span>List Price</span>
+                                        <span id="totalPrice">5.01 USDC</span>
+                                    </div>
+                                </div>
+                                
+                                <button class="generate-btn" id="generateBtn">
+                                    <i class="fas fa-magic"></i>
+                                    Generate & Mint on Arc
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-editor">
+                        <div class="timeline-header">
+                            <span class="timeline-title">
+                                <i class="fas fa-film"></i>
+                                Blend Timeline
+                            </span>
+                            <span id="totalFrames">0 frames | 0.0s</span>
+                        </div>
+                        <div class="timeline-track" id="timelineTrack">
+                            <div style="color: var(--arc-text-muted); font-size: 13px; display: flex; align-items: center; justify-content: center; width: 100%;">
+                                Add motion segments above to build your blend strip
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wallet Tab -->
+            <div class="tab-content" data-tab="wallet">
+                <div class="wallet-grid">
+                    <div class="wallet-section">
+                        <div class="wallet-section-title">
+                            <i class="fas fa-wallet"></i>
+                            Circle Wallet (Arc Network)
+                        </div>
+                        
+                        <div class="circle-wallet-card">
+                            <div class="circle-logo">
+                                <i class="fas fa-circle"></i>
+                                Circle Programmable Wallet
+                            </div>
+                            <div class="wallet-address" id="walletAddress">0x0000...0000</div>
+                            <div style="margin-bottom: 16px;">
+                                <div style="font-size: 28px; font-weight: 700;" id="usdcBalance">0.00 USDC</div>
+                                <div style="font-size: 13px; opacity: 0.8;">Available Balance</div>
+                            </div>
+                            <div class="wallet-actions">
+                                <button class="wallet-action-btn" onclick="depositFunds()">
+                                    <i class="fas fa-arrow-down"></i> Deposit
+                                </button>
+                                <button class="wallet-action-btn" onclick="withdrawFunds()">
+                                    <i class="fas fa-arrow-up"></i> Withdraw
+                                </button>
+                                <button class="wallet-action-btn" onclick="viewOnExplorer()">
+                                    <i class="fas fa-external-link-alt"></i> Explorer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="wallet-section">
+                        <div class="wallet-section-title">
+                            <i class="fas fa-project-diagram"></i>
+                            Royalty Chain
+                        </div>
+                        
+                        <div class="royalty-chain" id="royaltyChain">
+                            <div class="chain-node">
+                                <div class="depth">0</div>
+                                <div class="info">
+                                    <div style="font-weight: 600;">Your Creations</div>
+                                    <div style="font-size: 12px; color: var(--arc-text-muted);">Primary Creator</div>
+                                </div>
+                                <div class="share">70%</div>
+                            </div>
+                            <div class="chain-node">
+                                <div class="depth">1</div>
+                                <div class="info">
+                                    <div style="font-weight: 600;">Derivatives</div>
+                                    <div style="font-size: 12px; color: var(--arc-text-muted);">Others using your work</div>
+                                </div>
+                                <div class="share">10%</div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 16px; padding: 16px; background: var(--arc-dark); border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color: var(--arc-text-muted);">Total Royalties Earned</span>
+                                <span style="font-weight: 600; color: var(--success);" id="totalRoyalties">0.00 USDC</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--arc-text-muted);">Pending Payouts</span>
+                                <span style="font-weight: 600;" id="pendingPayouts">0.00 USDC</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Polygon Visualization Bar -->
+    <div class="polygon-viz" id="polygonViz">
+        <div class="polygon-canvas">
+            <canvas id="polygonCanvas"></canvas>
+        </div>
+        <div class="polygon-metrics">
+            <h4 style="margin-bottom: 12px;">
+                <i class="fas fa-chart-line"></i>
+                Live Metrics
+            </h4>
+            <div class="metric-row">
+                <span class="metric-label">Active Blends</span>
+                <span class="metric-value highlight" id="activeBlends">0</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Total Volume (24h)</span>
+                <span class="metric-value" id="dailyVolume">0 USDC</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Avg Uniqueness</span>
+                <span class="metric-value" id="avgUniqueness">0%</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Gas Sponsored</span>
+                <span class="metric-value" id="gasSponsored">0 USDC</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Last Block</span>
+                <span class="metric-value" id="lastBlock">#0</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Pending Tx</span>
+                <span class="metric-value" id="pendingTx">0</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="/autonomous-commerce.js"></script>
+</body>
+</html>
