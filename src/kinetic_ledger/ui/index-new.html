@@ -3592,7 +3592,7 @@
                 });
                 
                 // Body
-                const bodyGeo = new THREE.CapsuleGeometry(0.15, 0.4, 8, 16);
+                const bodyGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.5, 16);
                 const body = new THREE.Mesh(bodyGeo, material);
                 body.position.y = 1.2;
                 body.castShadow = true;
@@ -3606,7 +3606,7 @@
                 group.add(head);
                 
                 // Arms
-                const armGeo = new THREE.CapsuleGeometry(0.04, 0.3, 4, 8);
+                const armGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.35, 8);
                 const leftArm = new THREE.Mesh(armGeo, material);
                 leftArm.position.set(-0.25, 1.25, 0);
                 leftArm.rotation.z = Math.PI / 6;
@@ -3620,7 +3620,7 @@
                 group.add(rightArm);
                 
                 // Legs
-                const legGeo = new THREE.CapsuleGeometry(0.05, 0.4, 4, 8);
+                const legGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.45, 8);
                 const leftLeg = new THREE.Mesh(legGeo, material);
                 leftLeg.position.set(-0.1, 0.5, 0);
                 leftLeg.castShadow = true;
@@ -4209,6 +4209,11 @@
                         if (container) {
                             container.innerHTML = '<div style="padding: 20px; color: #999; font-size: 12px;">No motion selected</div>';
                         }
+                    }
+                    // Reload character in Artifacts tab viewer
+                    if (artifactsViewer && artifactsViewer.character !== undefined) {
+                        console.log('[PROGRESS] updateSelectedCharacter: Reloading character in artifacts viewer');
+                        artifactsViewer.loadCharacter();
                     }
                 }
                 console.log(`[EXIT] updateSelectedCharacter: Selected ${selectedCharacterName}`);
@@ -5407,6 +5412,33 @@
             }
             
             /**
+             * Build a name → Object3D map for all bones in a character.
+             * Used for name-based bone matching across different skeletons.
+             */
+            function buildBoneNameMap(character) {
+                const map = new Map();
+                character.traverse(child => {
+                    if (child.isBone && child.name) {
+                        map.set(child.name, child);
+                    }
+                });
+                return map;
+            }
+
+            /**
+             * Build a name → index map from a boneStates array (from sampleBoneState).
+             */
+            function buildBoneStateNameIndex(boneStates) {
+                const map = new Map();
+                for (let i = 0; i < boneStates.length; i++) {
+                    if (boneStates[i].name) {
+                        map.set(boneStates[i].name, i);
+                    }
+                }
+                return map;
+            }
+
+            /**
              * Sample bone state from a Three.js character at a specific animation time.
              * Returns an array of { name, position, quaternion, scale } per bone.
              */
@@ -5449,16 +5481,16 @@
              * alpha: 0=fully A, 1=fully B (smoothstepped before calling)
              */
             function applyBlendedBoneState(character, boneStatesA, boneStatesB, alpha) {
-                const bones = [];
-                character.traverse(child => {
-                    if (child.isBone) bones.push(child);
-                });
+                const boneMap = buildBoneNameMap(character);
+                const indexB = buildBoneStateNameIndex(boneStatesB);
                 
-                const count = Math.min(bones.length, boneStatesA.length, boneStatesB.length);
-                for (let i = 0; i < count; i++) {
-                    const bone = bones[i];
-                    const a = boneStatesA[i];
-                    const b = boneStatesB[i];
+                for (const a of boneStatesA) {
+                    const bone = boneMap.get(a.name);
+                    if (!bone) continue;
+                    
+                    const bIdx = indexB.get(a.name);
+                    if (bIdx === undefined) continue;
+                    const b = boneStatesB[bIdx];
                     
                     // SLERP quaternion rotations (core of motion blending)
                     bone.quaternion.copy(a.quaternion).slerp(b.quaternion, alpha);
@@ -5689,14 +5721,14 @@
                         const cacheIdx = Math.min(localFrame, motionBoneCache[mIdx].length - 1);
                         const boneState = motionBoneCache[mIdx][cacheIdx];
                         
-                        // Apply directly to character
-                        const bones = [];
-                        character.traverse(child => { if (child.isBone) bones.push(child); });
-                        const count = Math.min(bones.length, boneState.length);
-                        for (let b = 0; b < count; b++) {
-                            bones[b].quaternion.copy(boneState[b].quaternion);
-                            bones[b].position.copy(boneState[b].position);
-                            bones[b].scale.copy(boneState[b].scale);
+                        // Apply directly to character (name-based matching)
+                        const boneMap = buildBoneNameMap(character);
+                        for (const bs of boneState) {
+                            const bone = boneMap.get(bs.name);
+                            if (!bone) continue;
+                            bone.quaternion.copy(bs.quaternion);
+                            bone.position.copy(bs.position);
+                            bone.scale.copy(bs.scale);
                         }
                         
                         const slotColor = trimmedMotions[mIdx].slot;
@@ -9046,6 +9078,29 @@
             
             loadCharacter() {
                 console.log('[ENTRY] ArtifactsViewer.loadCharacter: Loading character model...');
+                
+                // Remove existing character from scene
+                if (this.character) {
+                    this.scene.remove(this.character);
+                    this.character.traverse((child) => {
+                        if (child.isMesh) {
+                            if (child.geometry) child.geometry.dispose();
+                            if (child.material) {
+                                if (Array.isArray(child.material)) {
+                                    child.material.forEach(m => m.dispose());
+                                } else {
+                                    child.material.dispose();
+                                }
+                            }
+                        }
+                    });
+                    this.character = null;
+                }
+                if (this.mixer) {
+                    this.mixer.stopAllAction();
+                    this.mixer = null;
+                }
+                
                 const loader = new THREE.FBXLoader();
                 // Use selected character from Characters tab
                 const characterPath = selectedCharacterPath || '/static/models/michelle.fbx';
@@ -9158,27 +9213,30 @@
                     };
                 });
                 
-                // Get skeleton bones
-                const bones = [];
-                this.character.traverse(child => { if (child.isBone) bones.push(child); });
+                // Get skeleton bones and build name map for matching
+                const boneMap = buildBoneNameMap(this.character);
                 
-                if (bones.length === 0) {
+                if (boneMap.size === 0) {
                     console.warn('[WARN] Character skeleton has no bones');
                     return;
                 }
                 
-                const numBones = Math.min(bones.length, result.boneStates[0].length);
+                // Build name → index map from blend result bone states
+                const bsNameIndex = buildBoneStateNameIndex(result.boneStates[0]);
                 const tracks = [];
+                let matchedBones = 0;
                 
-                // Create quaternion + position tracks for each bone
-                for (let bIdx = 0; bIdx < numBones; bIdx++) {
-                    const boneName = bones[bIdx].name;
+                // Create quaternion + position tracks for each bone (name-matched)
+                for (const [boneName, bone] of boneMap) {
+                    const bsIdx = bsNameIndex.get(boneName);
+                    if (bsIdx === undefined) continue; // bone not in blend data
+                    
                     const times = [];
                     const quaternions = [];
                     const positions = [];
                     
                     for (let f = 0; f < totalFrames; f++) {
-                        const bs = result.boneStates[f][bIdx];
+                        const bs = result.boneStates[f][bsIdx];
                         times.push(f * frameDuration);
                         
                         quaternions.push(bs.quaternion.x, bs.quaternion.y, bs.quaternion.z, bs.quaternion.w);
@@ -9191,9 +9249,10 @@
                     tracks.push(new THREE.VectorKeyframeTrack(
                         `${boneName}.position`, times, positions
                     ));
+                    matchedBones++;
                 }
                 
-                console.log(`  Created ${tracks.length} tracks (${numBones} bones × 2)`);
+                console.log(`  Created ${tracks.length} tracks (${matchedBones} matched bones × 2, ${boneMap.size} total bones, ${bsNameIndex.size} blend bones)`);
                 
                 const clip = new THREE.AnimationClip('BlendedSequence', duration, tracks);
                 
