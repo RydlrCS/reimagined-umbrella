@@ -27,9 +27,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY src/ ./src/
 COPY config/ ./config/
+COPY data/ ./data/
 
-# Create necessary directories (data and artifacts are mounted at runtime or created dynamically)
-RUN mkdir -p /app/logs /app/artifacts /app/data
+# Create necessary directories
+RUN mkdir -p /app/logs /app/artifacts
 
 # Expose port
 EXPOSE 8080

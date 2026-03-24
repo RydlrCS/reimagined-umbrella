@@ -5412,33 +5412,6 @@
             }
             
             /**
-             * Build a name → Object3D map for all bones in a character.
-             * Used for name-based bone matching across different skeletons.
-             */
-            function buildBoneNameMap(character) {
-                const map = new Map();
-                character.traverse(child => {
-                    if (child.isBone && child.name) {
-                        map.set(child.name, child);
-                    }
-                });
-                return map;
-            }
-
-            /**
-             * Build a name → index map from a boneStates array (from sampleBoneState).
-             */
-            function buildBoneStateNameIndex(boneStates) {
-                const map = new Map();
-                for (let i = 0; i < boneStates.length; i++) {
-                    if (boneStates[i].name) {
-                        map.set(boneStates[i].name, i);
-                    }
-                }
-                return map;
-            }
-
-            /**
              * Sample bone state from a Three.js character at a specific animation time.
              * Returns an array of { name, position, quaternion, scale } per bone.
              */
@@ -8956,7 +8929,34 @@
             
             console.log('[EXIT] initArtifactsViewer: Artifacts viewer ready');
         }
-        
+
+        /**
+         * Build a name → Object3D map for all bones in a character.
+         * Used for name-based bone matching across different skeletons.
+         */
+        function buildBoneNameMap(character) {
+            const map = new Map();
+            character.traverse(child => {
+                if (child.isBone && child.name) {
+                    map.set(child.name, child);
+                }
+            });
+            return map;
+        }
+
+        /**
+         * Build a name → index map from a boneStates array (from sampleBoneState).
+         */
+        function buildBoneStateNameIndex(boneStates) {
+            const map = new Map();
+            for (let i = 0; i < boneStates.length; i++) {
+                if (boneStates[i].name) {
+                    map.set(boneStates[i].name, i);
+                }
+            }
+            return map;
+        }
+
         class ArtifactsViewer {
             constructor() {
                 this.canvas = document.getElementById('artifacts-canvas');

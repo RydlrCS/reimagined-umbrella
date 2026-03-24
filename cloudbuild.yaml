@@ -17,7 +17,7 @@ steps:
       - '--image'
       - 'gcr.io/$PROJECT_ID/kinetic-ledger:$COMMIT_SHA'
       - '--region'
-      - 'europe-west4'
+      - 'us-west1'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
@@ -35,9 +35,12 @@ steps:
       - '0'
       - '--max-instances'
       - '10'
+      - '--set-env-vars'
+      - 'SKIP_GCS_SYNC=true'
 
 images:
   - 'gcr.io/$PROJECT_ID/kinetic-ledger:$COMMIT_SHA'
 
 options:
   logging: CLOUD_LOGGING_ONLY
+  defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET

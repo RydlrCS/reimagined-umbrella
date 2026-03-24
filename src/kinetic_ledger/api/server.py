@@ -3,10 +3,12 @@ Kinetic Ledger Phase-2 API Server.
 
 FastAPI server that exposes the trustless agent loop endpoints.
 """
+import asyncio
 import os
 import logging
 import json
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Header, status
@@ -60,6 +62,9 @@ app.add_middleware(
 # GCS integration for Cloud Run
 def sync_data_from_gcs():
     """Sync data and config from GCS bucket on startup (for Cloud Run)."""
+    if os.getenv("SKIP_GCS_SYNC", "").lower() == "true":
+        logger.info("SKIP_GCS_SYNC is set, skipping GCS data sync")
+        return
     if os.getenv("K_SERVICE"):  # Running in Cloud Run
         try:
             from ..services.gcs_storage import sync_directory_from_gcs
@@ -76,11 +81,17 @@ def sync_data_from_gcs():
             logger.warning(f"Failed to sync data from GCS: {e}")
 
 
+_gcs_sync_executor = ThreadPoolExecutor(max_workers=1)
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup."""
     logger.info("Starting Kinetic Ledger API...")
-    sync_data_from_gcs()
+    # Run GCS sync in a background thread so it doesn't block the
+    # server from passing Cloud Run's startup health-check.
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(_gcs_sync_executor, sync_data_from_gcs)
     logger.info("Kinetic Ledger API started")
 
 
@@ -478,13 +489,16 @@ async def serve_autonomous_commerce_js():
     return FileResponse(js_path, media_type="application/javascript")
 
 
+# Base path for FBX model files (works in both dev and Docker)
+FBX_DIR = Path(__file__).parent.parent.parent.parent / "data" / "mixamo_anims" / "fbx"
+
 @app.get("/static/models/Ch03_nonPBR.fbx")
 async def serve_character_model():
     """Serve Michele character FBX model (legacy path, redirects to michelle.fbx)."""
     # Try new name first (michelle.fbx), then fall back to old name
     model_paths = [
-        Path("/workspaces/reimagined-umbrella/data/mixamo_anims/fbx/michelle.fbx"),
-        Path("/workspaces/reimagined-umbrella/Ch03_nonPBR.fbx"),
+        FBX_DIR / "michelle.fbx",
+        Path(__file__).parent.parent.parent.parent / "Ch03_nonPBR.fbx",
     ]
     
     for model_path in model_paths:
@@ -497,7 +511,7 @@ async def serve_character_model():
 @app.get("/static/models/michelle.fbx")
 async def serve_michelle_character():
     """Serve Michelle character FBX model."""
-    model_path = Path("/workspaces/reimagined-umbrella/data/mixamo_anims/fbx/michelle.fbx")
+    model_path = FBX_DIR / "michelle.fbx"
     
     if not model_path.exists():
         raise HTTPException(status_code=404, detail="Michelle character model not found")
@@ -510,8 +524,8 @@ async def serve_remy_character():
     """Serve Remy character FBX model."""
     # Try both capitalizations
     model_paths = [
-        Path("/workspaces/reimagined-umbrella/data/mixamo_anims/fbx/Remy.fbx"),
-        Path("/workspaces/reimagined-umbrella/data/mixamo_anims/fbx/remy.fbx"),
+        FBX_DIR / "Remy.fbx",
+        FBX_DIR / "remy.fbx",
     ]
     
     for model_path in model_paths:
@@ -524,7 +538,7 @@ async def serve_remy_character():
 @app.get("/static/models/X Bot@Capoeira.fbx")
 async def serve_xbot_capoeira():
     """Serve X Bot Capoeira animation (temporary placeholder)."""
-    model_path = Path("/workspaces/reimagined-umbrella/data/mixamo_anims/fbx/X Bot@Capoeira.fbx")
+    model_path = FBX_DIR / "X Bot@Capoeira.fbx"
     
     if not model_path.exists():
         raise HTTPException(status_code=404, detail="X Bot model not found")
@@ -539,7 +553,7 @@ async def serve_michele_animations(filename: str):
     if ".." in filename or "/" in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
     
-    model_path = Path(f"/workspaces/reimagined-umbrella/data/mixamo_anims/fbx/michele/{filename}")
+    model_path = FBX_DIR / "michele" / filename
     
     if not model_path.exists():
         raise HTTPException(status_code=404, detail=f"Michele animation not found: {filename}")
@@ -554,7 +568,7 @@ async def serve_mixamo_fbx(filename: str):
     if ".." in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
     
-    model_path = Path(f"/workspaces/reimagined-umbrella/data/mixamo_anims/fbx/{filename}")
+    model_path = FBX_DIR / filename
     
     if not model_path.exists():
         raise HTTPException(status_code=404, detail=f"FBX file not found: {filename}")
@@ -573,7 +587,7 @@ async def serve_animation_fbx(filename: str):
     from urllib.parse import unquote
     decoded_filename = unquote(filename)
     
-    model_path = Path(f"/workspaces/reimagined-umbrella/data/mixamo_anims/fbx/{decoded_filename}")
+    model_path = FBX_DIR / decoded_filename
     
     if not model_path.exists():
         raise HTTPException(status_code=404, detail=f"Animation FBX file not found: {decoded_filename}")
